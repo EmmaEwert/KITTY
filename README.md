@@ -6,6 +6,15 @@ KITTY differentiates itself through seamless basic integration, automatic object
 instantiation, and friction-free translation from Tiled custom properties to C# fields, properties
 and even methods.
 
+KITTY imports every graphic, object and setting you've defined in your Tiled tilemaps into Unity.
+
+Unity's built-in tilemap editor is okay, but Tiled is *way* better. You can define stuff like text,
+warps, and pickups directly in Tiled. KITTY just imports and applies all that seamlessly.
+
+KITTY can't make custom behaviours without coding those behaviours, though. You still need to write
+character controllers, enemy AI, interaction behaviours etc. yourself, *or* use an off-the-shelf
+engine which will work as expected with KITTY's `PropertyHook` component.
+
 Note: This README is a teaser for 1.0.0 – some features are not yet implemented as described.
 
 ## Seamless basic integration
