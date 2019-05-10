@@ -48,8 +48,8 @@ public class Sign : MonoBehaviour {
 
 	private BorderType border;
 	[TiledProperty] private BorderType Border {
-		get => _border;
-		set => _border = Enum.Parse(typeof(Border), value, ignoreCase: true);
+		get => border;
+		set => border = Enum.Parse(typeof(Border), value, ignoreCase: true);
 	}
 	private enum BorderType { Wood, Metal, }
 
