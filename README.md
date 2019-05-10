@@ -47,9 +47,9 @@ public class Sign : MonoBehaviour {
 	[TiledProperty("Text Speed")] private float speed;
 
 	private BorderType border;
-	[TiledProperty] private BorderType Border {
-		get => border;
-		set => border = Enum.Parse(typeof(Border), value, ignoreCase: true);
+	[TiledProperty] private string Border {
+		get => border.ToString();
+		set => border = Enum.Parse(typeof(BorderType), value, ignoreCase: true);
 	}
 	private enum BorderType { Wood, Metal, }
 
