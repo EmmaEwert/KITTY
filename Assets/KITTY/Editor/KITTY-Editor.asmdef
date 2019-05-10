@@ -1,0 +1,17 @@
+{
+    "name": "KITTY-Editor",
+    "references": [
+        "GUID:fbe00c9b7e96ca14788ceb1bb532e404"
+    ],
+    "optionalUnityReferences": [],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": []
+}
