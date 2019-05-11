@@ -94,7 +94,6 @@ namespace KITTY {
 			collider.generationType = CompositeCollider2D.GenerationType.Manual;
 
 			// Layers
-			var depth = layers.Length;
 			PrefabHelper.cache.Clear();
 			for (var i = 0; i < layers.Length; ++i) {
 				var layer = layers[i];
@@ -103,7 +102,6 @@ namespace KITTY {
 				var offsety = -((float?)layer.Attribute("offsety") ?? 0) / tilewidth;
 				var layerObject = new GameObject(name);
 				layerObject.transform.parent = grid.transform;
-				layerObject.transform.localPosition = new Vector3(offsetx, offsety, --depth);
 				layerObject.isStatic = true;
 
 				// Tile layer
