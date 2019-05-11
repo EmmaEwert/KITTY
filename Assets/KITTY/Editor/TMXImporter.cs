@@ -125,6 +125,7 @@ namespace KITTY {
 					layerObject.AddComponent<TilemapCollider2D>().usedByComposite = true;
 					tilemap.SetTilesBlock(bounds, layerTiles);
 					renderer.sortOrder = TilemapRenderer.SortOrder.TopLeft;
+					renderer.sortingOrder = i;
 
 					// Flipped tiles
 					for (var j = 0; j < gids[i].Length; ++j) {
@@ -218,6 +219,7 @@ namespace KITTY {
 							var renderer = new GameObject("Renderer").AddComponent<SpriteRenderer>();
 							renderer.transform.SetParent(gameObject.transform, worldPositionStays: false);
 							renderer.sprite = sprite;
+							renderer.sortingOrder = i;
 						} else {
 							gameObject.transform.localPosition =
 								new Vector3(objectX, objectY - (float)objectHeight / tileheight, 0);
