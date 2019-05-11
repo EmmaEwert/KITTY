@@ -102,7 +102,7 @@ namespace KITTY {
 				var margin = new Vector4(tileset.margin, tileset.margin, 0, 0);
 				var rows = tileset.tilecount / tileset.columns;
 				var rect = Vector4.Scale(spacing, new Vector4(i % tileset.columns, rows - i / tileset.columns - 1, 1, 1)) + margin;
-				tileset.sprites[i].rect = new Rect(rect.x, rect.y, rect.z, rect.w);
+				tileset.sprites[i].rect = new Rect(rect.x, rect.y + (tileset.texture.height - rows * tileset.tileheight), rect.z, rect.w);
 				tileset.sprites[i].tileset = tileset;
 				if (tileShapes.TryGetValue(i, out var shapes)) {
 					tileset.sprites[i].shapes = new Vector2[shapes.Length][];
