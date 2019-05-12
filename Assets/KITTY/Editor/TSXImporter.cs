@@ -1,4 +1,6 @@
 namespace KITTY {
+	using System;
+	using System.Collections.Generic;
 	using System.IO;
 	using System.Linq;
 	using System.Xml.Linq;
@@ -32,7 +34,7 @@ namespace KITTY {
 				(int?)tileoffset?.Attribute("x") ?? 0,
 				(int?)tileoffset?.Attribute("y") ?? 0
 			);
-			tileset.imageSource = (string)document.Element("image").Attribute("source");
+			tileset.imageSource = (string)document.Element("image")?.Attribute("source");
 
 			var typedTiles = document
 				.Elements("tile")
@@ -44,13 +46,13 @@ namespace KITTY {
 				.Elements("tile")
 				.Where(t => t.Element("objectgroup") != null)
 				.Select(t => (
-					id: (int)t.Attribute("id"),
+					id: (uint)t.Attribute("id"),
 					objs: t.Element("objectgroup").Elements("object")
 				))
 				.Select(t => (
 					id: t.id,
 					objs: t.objs.Select(o => (
-						id: (int)o.Attribute("id"),
+						id: (uint)o.Attribute("id"),
 						name: (string)o.Attribute("name"),
 						type: (string)o.Attribute("type"),
 						x: (float)o.Attribute("x"),
@@ -62,31 +64,35 @@ namespace KITTY {
 					)).ToArray()
 				))
 				.ToDictionary(t => t.id, t => t.objs);
+			
 
 			// Texture
-			var imageAssetPath = Path.GetFullPath(
-				Path.GetDirectoryName(context.assetPath)
-				+ Path.DirectorySeparatorChar
-				+ (Path.IsPathRooted(tileset.imageSource)
-					? Path.GetFileName(tileset.imageSource)
-					: tileset.imageSource)
-			);
-			imageAssetPath = "Assets" + imageAssetPath.Substring(Application.dataPath.Length);
-			tileset.texture = AssetDatabase.LoadMainAssetAtPath(imageAssetPath) as Texture2D;
-			if (!tileset.texture) {
-				Debug.LogError(
-					$"Error: could not load texture \"{imageAssetPath}\" ({tileset.imageSource}) of tileset \"{context.assetPath}\".",
-					context.mainObject
-				);
-				return null;
-			} else {
+			var tileTextures = new Dictionary<uint, Texture2D>();
+			var tileIDs = new Dictionary<int, uint>();
+			if (tileset.imageSource != null) {
+				tileset.texture = LoadTexture(tileset.imageSource, context);
 				if (tileset.columns == 0) {
 					tileset.columns = tileset.texture.width / tileset.tilewidth;
 				}
 				if (tileset.tilecount == 0) {
 					tileset.tilecount = tileset.columns * (tileset.texture.height / tileset.tileheight);
 				}
-				context.DependsOnSourceAsset(imageAssetPath);
+			} else {
+				tileTextures = document
+					.Elements("tile")
+					.Where(t => t.Element("image") != null)
+					.Select(t => (
+						id: (uint)t.Attribute("id"),
+						texture: LoadTexture((string)t.Element("image").Attribute("source"), context)
+					)).ToDictionary(t => t.id, t => t.texture);
+				tileIDs = document
+					.Elements("tile")
+					.Where(t => t.Attribute("id") != null)
+					.Select((t, i) => (
+						i: i,
+						id: (uint)t.Attribute("id")
+					)).ToDictionary(t => t.i, t => t.id);
+				tileset.columns = tileset.tilecount;
 			}
 
 			// Sprites
@@ -95,14 +101,21 @@ namespace KITTY {
 				Vector2.one * 0.5f
 				- tileset.tileoffset
 				/ new Vector2(tileset.tilewidth, tileset.tileheight);
-			for (var i = 0; i < tileset.sprites.Length; ++i) {
+			for (var i = 0u; i < tileset.sprites.Length; ++i) {
 				var s0 = new Vector2Int(tileset.tilewidth, tileset.tileheight);
 				var s1 = new Vector2Int(tileset.spacing, 0);
 				var spacing = new Vector4(s0.x, s0.y, s0.x, s0.y) + new Vector4(s1.x, s1.x, s1.y, s1.y);
 				var margin = new Vector4(tileset.margin, tileset.margin, 0, 0);
 				var rows = tileset.tilecount / tileset.columns;
 				var rect = Vector4.Scale(spacing, new Vector4(i % tileset.columns, rows - i / tileset.columns - 1, 1, 1)) + margin;
-				tileset.sprites[i].rect = new Rect(rect.x, rect.y + (tileset.texture.height - rows * tileset.tileheight), rect.z, rect.w);
+				if (tileTextures.TryGetValue(i, out var texture)) {
+					tileset.sprites[i].texture = texture;
+					tileset.sprites[i].rect = new Rect(0, 0, texture.width, texture.height);
+				} else if (tileset.texture) {
+					tileset.sprites[i].rect = new Rect(rect.x, rect.y + (tileset.texture.height - rows * tileset.tileheight), rect.z, rect.w);
+				} else {
+					continue;
+				}
 				tileset.sprites[i].tileset = tileset;
 				if (tileShapes.TryGetValue(i, out var shapes)) {
 					tileset.sprites[i].shapes = new Vector2[shapes.Length][];
@@ -135,6 +148,11 @@ namespace KITTY {
 			// Tiles
 			tileset.tiles = new Tileset.Tile[tileset.tilecount];
 
+			// Tile IDs for image collection tilesets
+			for (var i = 0; i < tileIDs.Count; ++i) {
+				tileset.tiles[i].id = tileIDs[i];
+			}
+
 			// Typed tiles
 			foreach (var tile in typedTiles) {
 				var id = tile.Key;
@@ -153,6 +171,24 @@ namespace KITTY {
 		///<summary>Construct a tileset from Tiled by instantiating one tile per texture sprite.</summary>
 		public override void OnImportAsset(AssetImportContext context) {
 			tileset = Load(context, XDocument.Load(assetPath).Element("tileset"));
+		}
+
+		static Texture2D LoadTexture(string filename, AssetImportContext context) {
+			var imageAssetPath = Path.GetFullPath(
+				Path.GetDirectoryName(context.assetPath)
+				+ Path.DirectorySeparatorChar
+				+ (Path.IsPathRooted(filename)
+					? Path.GetFileName(filename)
+					: filename)
+			);
+			imageAssetPath = "Assets" + imageAssetPath.Substring(Application.dataPath.Length);
+			var texture = AssetDatabase.LoadMainAssetAtPath(imageAssetPath) as Texture2D;
+			if (texture) {
+				context.DependsOnSourceAsset(imageAssetPath);
+			} else {
+				throw new FileNotFoundException($"could not load texture \"{imageAssetPath}\" ({filename}) of tileset \"{context.assetPath}\".");
+			}
+			return texture;
 		}
 	}
 }

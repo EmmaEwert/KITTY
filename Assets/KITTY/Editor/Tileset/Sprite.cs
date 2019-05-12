@@ -10,12 +10,13 @@ namespace KITTY {
 		public struct Sprite : ISerializationCallbackReceiver {
 			public Tileset tileset;
 			public Rect rect;
+			public Texture2D texture;
 			[NonSerialized] public Vector2[][] shapes;
 			[HideInInspector, SerializeField] Shape[] _shapes;
 
 			public UnityEngine.Sprite Instantiate(float pixelsPerUnit) {
 				var sprite = UnityEngine.Sprite.Create(
-					tileset.texture,
+					texture ?? tileset.texture,
 					rect,
 					tileset.spritePivot,
 					pixelsPerUnit,

@@ -36,6 +36,7 @@ namespace KITTY {
 				.ToArray();
 			var gids = new uint[layers.Length][];
 			var gidSet = new HashSet<uint>();
+			// TODO: & 0x1fffffff the gidSet values from tile gids[]
 			for (var i = 0; i < layers.Length; ++i) {
 				var layer = layers[i];
 				var name = (string)layer.Attribute("name");
@@ -52,7 +53,7 @@ namespace KITTY {
 				} else { // Object layer
 					var objects = layer.Elements("object").ToArray();
 					foreach (var obj in objects) {
-						gidSet.Add((uint?)obj.Attribute("gid") ?? 0);
+						gidSet.Add(((uint?)obj.Attribute("gid") ?? 0) & 0x1fffffff);
 					}
 				}
 			}
@@ -60,7 +61,6 @@ namespace KITTY {
 			// Tilesets
 			var assetPathPrefix = Path.GetDirectoryName(assetPath) + Path.DirectorySeparatorChar;
 			var tiles = new Tile[1]; // Global Tile IDs start from 1
-			var tilesetGIDs = 0;
 			foreach (var tilesetElement in tilesets) {
 				Tileset tileset = null;
 				var firstgid = (int)tilesetElement.Attribute("firstgid");
@@ -72,14 +72,27 @@ namespace KITTY {
 					context.DependsOnSourceAsset(assetPathPrefix + tilesetPath);
 				}
 				var tilesetTiles = new Tile[tileset.tiles.Length];
-				for (var i = 0; i < tilesetTiles.Length; ++i) {
-					if (!gidSet.Contains((uint)(i + firstgid))) { continue; }
-					var sprite = tileset.sprites[i].Instantiate(tilewidth);
-					var tile = tileset.tiles[i].Instantiate(sprite);
-					context.AddObjectToAsset($"sprite{i + firstgid:0000}", sprite);
-					context.AddObjectToAsset($"tile{i + firstgid:0000}", tile);
-					tilesetTiles[i] = tile;
-					tilesetGIDs++;
+				if (tileset.texture == null) { // Image collection tileset
+					var tileIDs = tileset.tiles.Select((t, i) => (t.id, i)).OrderBy(t => t.id).ToArray();
+					tilesetTiles = new Tile[tileIDs.Last().id + 1];
+					for (var i = 0; i < tileIDs.Length; ++i) {
+						var tileID = tileIDs[i].id;
+						if (!gidSet.Contains((uint)(tileID + firstgid))) { continue; }
+						var sprite = tileset.sprites[tileIDs[i].i].Instantiate(tilewidth);
+						var tile = tileset.tiles[tileIDs[i].i].Instantiate(sprite);
+						context.AddObjectToAsset($"sprite{tileIDs[i].i + firstgid:0000}", sprite);
+						context.AddObjectToAsset($"tile{tileIDs[i].i + firstgid:0000}", tile);
+						tilesetTiles[i] = tile;
+					}
+				} else {
+					for (var i = 0; i < tilesetTiles.Length; ++i) {
+						if (!gidSet.Contains((uint)(i + firstgid))) { continue; }
+						var sprite = tileset.sprites[i].Instantiate(tilewidth);
+						var tile = tileset.tiles[i].Instantiate(sprite);
+						context.AddObjectToAsset($"sprite{i + firstgid:0000}", sprite);
+						context.AddObjectToAsset($"tile{i + firstgid:0000}", tile);
+						tilesetTiles[i] = tile;
+					}
 				}
 				ArrayUtility.AddRange(ref tiles, tilesetTiles);
 			}
