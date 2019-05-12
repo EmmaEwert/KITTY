@@ -6,7 +6,6 @@ namespace KITTY {
 		///<summary>Representation of a single tile in a Tiled tileset.</summary>
 		[Serializable]
 		public struct Tile {
-			public uint id;
 			public GameObject gameObject;
 
 			public UnityEngine.Tilemaps.Tile Instantiate(UnityEngine.Sprite sprite) {

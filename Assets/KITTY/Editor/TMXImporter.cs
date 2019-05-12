@@ -72,27 +72,13 @@ namespace KITTY {
 					context.DependsOnSourceAsset(assetPathPrefix + tilesetPath);
 				}
 				var tilesetTiles = new Tile[tileset.tiles.Length];
-				if (tileset.texture == null) { // Image collection tileset
-					var tileIDs = tileset.tiles.Select((t, i) => (t.id, i)).OrderBy(t => t.id).ToArray();
-					tilesetTiles = new Tile[tileIDs.Last().id + 1];
-					for (var i = 0; i < tileIDs.Length; ++i) {
-						var tileID = tileIDs[i].id;
-						if (!gidSet.Contains((uint)(tileID + firstgid))) { continue; }
-						var sprite = tileset.sprites[tileIDs[i].i].Instantiate(tilewidth);
-						var tile = tileset.tiles[tileIDs[i].i].Instantiate(sprite);
-						context.AddObjectToAsset($"sprite{tileIDs[i].i + firstgid:0000}", sprite);
-						context.AddObjectToAsset($"tile{tileIDs[i].i + firstgid:0000}", tile);
-						tilesetTiles[i] = tile;
-					}
-				} else {
-					for (var i = 0; i < tilesetTiles.Length; ++i) {
-						if (!gidSet.Contains((uint)(i + firstgid))) { continue; }
-						var sprite = tileset.sprites[i].Instantiate(tilewidth);
-						var tile = tileset.tiles[i].Instantiate(sprite);
-						context.AddObjectToAsset($"sprite{i + firstgid:0000}", sprite);
-						context.AddObjectToAsset($"tile{i + firstgid:0000}", tile);
-						tilesetTiles[i] = tile;
-					}
+				for (var i = 0; i < tilesetTiles.Length; ++i) {
+					if (!gidSet.Contains((uint)(i + firstgid))) { continue; }
+					var sprite = tileset.sprites[i].Instantiate(tilewidth);
+					var tile = tileset.tiles[i].Instantiate(sprite);
+					context.AddObjectToAsset($"sprite{i + firstgid:0000}", sprite);
+					context.AddObjectToAsset($"tile{i + firstgid:0000}", tile);
+					tilesetTiles[i] = tile;
 				}
 				ArrayUtility.AddRange(ref tiles, tilesetTiles);
 			}

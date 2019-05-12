@@ -36,63 +36,33 @@ namespace KITTY {
 			);
 			tileset.imageSource = (string)document.Element("image")?.Attribute("source");
 
-			var typedTiles = document
+			var tileCollection = document
 				.Elements("tile")
-				.Where(t => t.Attribute("type") != null)
-				.Select(t => (id: (int)t.Attribute("id"), type: (string)t.Attribute("type")))
-				.ToDictionary(t => t.id, t => t.type);
+				.Select(t => LoadTile(t))
+				.OrderBy(t => t.id)
+				.ToArray();
 
-			var tileShapes = document
-				.Elements("tile")
-				.Where(t => t.Element("objectgroup") != null)
-				.Select(t => (
-					id: (uint)t.Attribute("id"),
-					objs: t.Element("objectgroup").Elements("object")
-				))
-				.Select(t => (
-					id: t.id,
-					objs: t.objs.Select(o => (
-						id: (uint)o.Attribute("id"),
-						name: (string)o.Attribute("name"),
-						type: (string)o.Attribute("type"),
-						x: (float)o.Attribute("x"),
-						y: (float)o.Attribute("y"),
-						width: (float?)o.Attribute("width") ?? 0,
-						height: (float?)o.Attribute("height") ?? 0,
-						rotation: (float?)o.Attribute("rotation") ?? 0,
-						points: (string)o.Element("polygon")?.Attribute("points")
-					)).ToArray()
-				))
-				.ToDictionary(t => t.id, t => t.objs);
-			
+			tileset.tilecount = Mathf.Max(tileset.tilecount, tileCollection.LastOrDefault().id + 1);
 
 			// Texture
-			var tileTextures = new Dictionary<uint, Texture2D>();
-			var tileIDs = new Dictionary<int, uint>();
-			if (tileset.imageSource != null) {
-				tileset.texture = LoadTexture(tileset.imageSource, context);
-				if (tileset.columns == 0) {
-					tileset.columns = tileset.texture.width / tileset.tilewidth;
-				}
-				if (tileset.tilecount == 0) {
-					tileset.tilecount = tileset.columns * (tileset.texture.height / tileset.tileheight);
-				}
-			} else {
-				tileTextures = document
-					.Elements("tile")
-					.Where(t => t.Element("image") != null)
-					.Select(t => (
-						id: (uint)t.Attribute("id"),
-						texture: LoadTexture((string)t.Element("image").Attribute("source"), context)
-					)).ToDictionary(t => t.id, t => t.texture);
-				tileIDs = document
-					.Elements("tile")
-					.Where(t => t.Attribute("id") != null)
-					.Select((t, i) => (
-						i: i,
-						id: (uint)t.Attribute("id")
-					)).ToDictionary(t => t.i, t => t.id);
+			if (tileset.imageSource == null) {
 				tileset.columns = tileset.tilecount;
+			} else {
+				tileset.texture = LoadTexture(tileset.imageSource, context);
+				tileset.columns = tileset.texture.width / tileset.tilewidth;
+				tileset.tilecount = tileset.columns * tileset.texture.height / tileset.tileheight;
+			}
+
+			var tileArray = new (GameObject prefab, Texture2D texture, Shape[] shapes)[tileset.tilecount];
+			for (var i = 0; i < tileArray.Length; ++i) {
+				tileArray[i].texture = tileset.texture;
+			}
+			foreach (var tile in tileCollection) {
+				tileArray[tile.id] = (
+					prefab: PrefabHelper.Load(tile.type, context),
+					texture: tileset.texture ?? LoadTexture(tile.image, context),
+					shapes: tile.shapes
+				);
 			}
 
 			// Sprites
@@ -108,16 +78,18 @@ namespace KITTY {
 				var margin = new Vector4(tileset.margin, tileset.margin, 0, 0);
 				var rows = tileset.tilecount / tileset.columns;
 				var rect = Vector4.Scale(spacing, new Vector4(i % tileset.columns, rows - i / tileset.columns - 1, 1, 1)) + margin;
-				if (tileTextures.TryGetValue(i, out var texture)) {
-					tileset.sprites[i].texture = texture;
-					tileset.sprites[i].rect = new Rect(0, 0, texture.width, texture.height);
+				var texture = tileArray[i].texture;
+				tileset.sprites[i].texture = texture;
+				tileset.sprites[i].tileset = tileset;
+				if (string.IsNullOrEmpty(tileset.imageSource)) { // Image collection
+					tileset.sprites[i].rect = new Rect(0, 0, texture?.width ?? 0, texture?.height ?? 0);
 				} else if (tileset.texture) {
-					tileset.sprites[i].rect = new Rect(rect.x, rect.y + (tileset.texture.height - rows * tileset.tileheight), rect.z, rect.w);
+					tileset.sprites[i].rect = new Rect(rect.x, rect.y + (tileset.texture.height - rows * tileset.tileheight - rows * tileset.spacing - margin.x), rect.z, rect.w);
 				} else {
 					continue;
 				}
-				tileset.sprites[i].tileset = tileset;
-				if (tileShapes.TryGetValue(i, out var shapes)) {
+				var shapes = tileArray[i].shapes;
+				if (shapes != null) {
 					tileset.sprites[i].shapes = new Vector2[shapes.Length][];
 					for (var j = 0; j < shapes.Length; ++j) {
 						var obj = shapes[j];
@@ -148,19 +120,14 @@ namespace KITTY {
 			// Tiles
 			tileset.tiles = new Tileset.Tile[tileset.tilecount];
 
-			// Tile IDs for image collection tilesets
-			for (var i = 0; i < tileIDs.Count; ++i) {
-				tileset.tiles[i].id = tileIDs[i];
-			}
-
 			// Typed tiles
-			foreach (var tile in typedTiles) {
-				var id = tile.Key;
-				var type = tile.Value;
+			foreach (var tile in tileCollection) {
+				var id = tile.id;
+				var type = tile.type;
 				var gameObject = PrefabHelper.Load(type, context);
 				if (gameObject) {
 					tileset.tiles[id].gameObject = gameObject;
-				} else {
+				} else if (!string.IsNullOrEmpty(type)) {
 					Debug.LogWarning($"No prefab named \"{type}\" could be found, skipping.");
 				}
 			}
@@ -189,6 +156,40 @@ namespace KITTY {
 				throw new FileNotFoundException($"could not load texture \"{imageAssetPath}\" ({filename}) of tileset \"{context.assetPath}\".");
 			}
 			return texture;
+		}
+
+		static (int id, string type, string image, Shape[] shapes) LoadTile(XElement element) {
+			return (
+				id: (int)element.Attribute("id"),
+				type: (string)element.Attribute("type"),
+				image: (string)element.Element("image")?.Attribute("source"),
+				shapes: element
+					.Element("objectgroup")?
+					.Elements("object")
+					.Select(o => new Shape {
+						id = (uint)o.Attribute("id"),
+						name = (string)o.Attribute("name"),
+						type = (string)o.Attribute("type"),
+						x = (float)o.Attribute("x"),
+						y = (float)o.Attribute("y"),
+						width = (float?)o.Attribute("width") ?? 0,
+						height = (float?)o.Attribute("height") ?? 0,
+						rotation = (float?)o.Attribute("rotation") ?? 0,
+						points = (string)o.Element("polygon")?.Attribute("points"),
+					}).ToArray()
+			);
+		}
+
+		struct Shape {
+			public uint id;
+			public string name;
+			public string type;
+			public float x;
+			public float y;
+			public float width;
+			public float height;
+			public float rotation;
+			public string points;
 		}
 	}
 }

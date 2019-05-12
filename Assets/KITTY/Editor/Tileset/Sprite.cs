@@ -16,7 +16,7 @@ namespace KITTY {
 
 			public UnityEngine.Sprite Instantiate(float pixelsPerUnit) {
 				var sprite = UnityEngine.Sprite.Create(
-					texture ?? tileset.texture,
+					texture,
 					rect,
 					tileset.spritePivot,
 					pixelsPerUnit,
