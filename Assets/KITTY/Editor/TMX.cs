@@ -91,14 +91,14 @@ namespace KITTY {
 				public Property[] properties;
 
 				public Object(XElement element) {
-					id = (int)element.Attribute("id");
-					name = (string)element.Attribute("name");
-					type = (string)element.Attribute("type");
-					gid = (uint?)element.Attribute("gid") ?? 0;
-					x = (float)element.Attribute("x");
-					y = (float)element.Attribute("y");
-					width = (float?)element.Attribute("width") ?? 0;
-					height = (float?)element.Attribute("height") ?? 0;
+					id       = (int   )element.Attribute("id");
+					name     = (string)element.Attribute("name");
+					type     = (string)element.Attribute("type");
+					gid      = (uint? )element.Attribute("gid") ?? 0;
+					x        = (float )element.Attribute("x");
+					y        = (float )element.Attribute("y");
+					width    = (float?)element.Attribute("width") ?? 0;
+					height   = (float?)element.Attribute("height") ?? 0;
 					rotation = (float?)element.Attribute("rotation") ?? 0;
 					properties = element
 						.Elements("properties")

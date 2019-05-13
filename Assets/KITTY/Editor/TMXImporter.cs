@@ -89,16 +89,13 @@ namespace KITTY {
 
 				// Tile layer
 				if (layer.data.value != null) {
-					var layerWidth = layer.width;//(int)layer.Attribute("width");
-					var layerHeight = layer.height;//(int)layer.Attribute("height");
-
 					// Tilemap
 					var layerTiles = new Tile[gids[i].Length];
 					for (var j = 0; j < layerTiles.Length; ++j) {
 						layerTiles[j] = tiles[gids[i][j] & 0x1ffffff]; // 3 MSB are for flipping
 					}
 
-					var size = new Vector3Int(layerWidth, layerHeight, 1);
+					var size = new Vector3Int(layer.width, layer.height, 1);
 					var bounds = new BoundsInt(Vector3Int.zero, size);
 					var tilemap = layerObject.AddComponent<Tilemap>();
 					var renderer = layerObject.AddComponent<TilemapRenderer>();
