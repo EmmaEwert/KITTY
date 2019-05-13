@@ -28,23 +28,20 @@ namespace KITTY {
 					border: Vector4.zero,
 					generateFallbackPhysicsShape: false
 				);
-				tile.sprite.hideFlags = HideFlags.HideInHierarchy;
-				tile.sprite.name = "Sprite";
-				if (objects?.Length > 0) {
-					tile.sprite.OverridePhysicsShape(objects.Select(s => s.points).ToList());
-				}
-
-				if (tile.sprite.GetPhysicsShapeCount() > 0) {
-					// TODO: Grid collidertype when the collider is a single full rect
-					tile.colliderType = UnityEngine.Tilemaps.Tile.ColliderType.Sprite;
-				} else {
-					tile.colliderType = UnityEngine.Tilemaps.Tile.ColliderType.None;
-				}
 				tile.color = Color.white;
 				tile.gameObject = prefab;
 				tile.hideFlags = HideFlags.HideInHierarchy;
 				tile.name = "Tile";
 				tile.transform = Matrix4x4.identity;
+				tile.sprite.hideFlags = HideFlags.HideInHierarchy;
+				tile.sprite.name = "Sprite";
+				if (objects?.Length > 0) {
+					tile.sprite.OverridePhysicsShape(objects.Select(s => s.points).ToList());
+					// TODO: Grid collidertype when the collider is a single full rect
+					tile.colliderType = UnityEngine.Tilemaps.Tile.ColliderType.Sprite;
+				} else {
+					tile.colliderType = UnityEngine.Tilemaps.Tile.ColliderType.None;
+				}
 				return tile;
 			}
 

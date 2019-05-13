@@ -19,7 +19,6 @@ namespace KITTY {
 			Texture2D texture = null;
 			var columns = 0;
 			var rows = 0;
-			var tiles = new (GameObject prefab, Texture2D texture, TSX.Tile.Object[] objects)[tilecount];
 			if (tsx.image.source == null) {
 				// Image collection tilesets don't have images or column counts; use a single row.
 				columns = tilecount;
@@ -31,10 +30,12 @@ namespace KITTY {
 				rows = texture.height / tsx.tileheight;
 				// Tile count depends only on column and row count.
 				tilecount = columns * rows;
-				// Single-image tilesets all use the same texture.
-				for (var i = 0; i < tiles.Length; ++i) {
-					tiles[i].texture = texture;
-				}
+			}
+
+			// Single-image tilesets all use the same texture.
+			var tiles = new (GameObject prefab, Texture2D texture, TSX.Tile.Object[] objects)[tilecount];
+			for (var i = 0; i < tiles.Length; ++i) {
+				tiles[i].texture = texture;
 			}
 
 			// Image collection tilesets each have their own texture and transparency color.
@@ -51,54 +52,18 @@ namespace KITTY {
 			tileset.name = (string)document.Attribute("name");
 			tileset.tiles = new Tileset.Tile[tilecount];
 			var pivot = Vector2.one * 0.5f - new Vector2(tsx.tileoffset.x, tsx.tileoffset.y) / new Vector2(tsx.tilewidth, tsx.tileheight);
-			var spacing = new Vector4(tsx.tilewidth + tsx.spacing, tsx.tileheight + tsx.spacing, tsx.tilewidth, tsx.tileheight);
-			var margin = new Vector4(tsx.margin, (texture?.height ?? 0) - rows * tsx.tileheight - rows * tsx.spacing, 0, 0);
 			for (var i = 0; i < tileset.tiles.Length; ++i) {
 				var tileTexture = tiles[i].texture;
-				var position = new Vector4(
-					texture ? i % columns : 0,
-					texture ? rows - i / columns - 1 : 0,
-					1, 1
-				);
-				var rect = texture
-					? Vector4.Scale(position, spacing) + margin
-					: new Vector4(0, 0, tileTexture?.width ?? 0, tileTexture?.height ?? 0);
 				tileset.tiles[i].prefab = tiles[i].prefab;
 				tileset.tiles[i].texture = tileTexture;
 				tileset.tiles[i].pivot = pivot;
-				tileset.tiles[i].rect = new Rect(rect.x, rect.y, rect.z, rect.w);
-				// Collision shapes
-				var objects = tiles[i].objects;
-				if (objects != null) {
-					tileset.tiles[i].objects = new Tileset.Tile.Object[objects.Length];
-					for (var j = 0; j < tileset.tiles[i].objects.Length; ++j) {
-						var obj = objects[j];
-						// Rectangle shape
-						if (obj.width > 0 && obj.height > 0) {
-							tileset.tiles[i].objects[j] = new Tileset.Tile.Object {
-								points = new [] {
-									new Vector2(obj.x, rect.w - obj.y),
-									new Vector2(obj.x, rect.w - obj.y - obj.height),
-									new Vector2(obj.x + obj.width, rect.w - obj.y - obj.height),
-									new Vector2(obj.x + obj.width, rect.w - obj.y)
-								}
-							};
-						// Polygon shape
-						} else if (obj.points != null) {
-							var points = obj.points.Split(' ');
-							tileset.tiles[i].objects[j] = new Tileset.Tile.Object {
-								points = new Vector2[points.Length]
-							};
-							for (var k = 0; k < points.Length; ++k) {
-								var point = points[k].Split(',');
-								var x = float.Parse(point[0]);
-								var y = float.Parse(point[1]);
-								tileset.tiles[i].objects[j].points[k] =
-									new Vector2(obj.x + x, rect.w - obj.y - y);
-							}
-						}
-					}
-				}
+				tileset.tiles[i].rect = new Rect(
+					texture ? (tsx.tilewidth + tsx.spacing) * (i % columns) + tsx.margin: 0,
+					texture ? (tsx.tileheight + tsx.spacing) * (rows - i / columns - 1) + texture.height - rows * tsx.tileheight - rows * tsx.spacing + tsx.margin : 0,
+					texture ? tsx.tilewidth : tileTexture?.width ?? 0,
+					texture ? tsx.tileheight : tileTexture?.height ?? 0
+				);
+				tileset.tiles[i].objects = ParseObjects(tiles[i].objects, tileset.tiles[i].rect.height);
 			}
 
 			context.AddObjectToAsset($"tileset_{tileset.name}", tileset);
@@ -110,6 +75,43 @@ namespace KITTY {
 			Load(context, XDocument.Load(assetPath).Element("tileset"));
 		}
 
+		///<summary>Parse collision shapes; either position and size, or list of points.</summary>
+		static Tileset.Tile.Object[] ParseObjects(TSX.Tile.Object[] tsxObjects, float height) {
+			if (tsxObjects == null) {
+				return null;
+			}
+			var objects = new Tileset.Tile.Object[tsxObjects.Length];
+			for (var j = 0; j < objects.Length; ++j) {
+				var obj = tsxObjects[j];
+				// Rectangle shape
+				if (obj.width > 0 && obj.height > 0) {
+					objects[j] = new Tileset.Tile.Object {
+						points = new [] {
+							new Vector2(obj.x, height - obj.y),
+							new Vector2(obj.x, height - obj.y - obj.height),
+							new Vector2(obj.x + obj.width, height - obj.y - obj.height),
+							new Vector2(obj.x + obj.width, height - obj.y)
+						}
+					};
+				// Polygon shape
+				} else if (obj.points != null) {
+					var points = obj.points.Split(' ');
+					objects[j] = new Tileset.Tile.Object {
+						points = new Vector2[points.Length]
+					};
+					for (var k = 0; k < points.Length; ++k) {
+						var point = points[k].Split(',');
+						var x = float.Parse(point[0]);
+						var y = float.Parse(point[1]);
+						objects[j].points[k] =
+							new Vector2(obj.x + x, height - obj.y - y);
+					}
+				}
+			}
+			return objects;
+		}
+
+		///<summary>Load texture asset based on filename, optionally making a color transparent</summary>
 		static Texture2D LoadTexture(string filename, string trans, AssetImportContext context) {
 			var imageAssetPath = Path.GetFullPath(
 				Path.GetDirectoryName(context.assetPath)
