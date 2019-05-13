@@ -211,6 +211,9 @@ namespace KITTY {
 						// Object sprite
 						var sprite = tile?.sprite;
 						if (sprite) {
+							var diagonal   = ((objectGID >> 29) & 1) == 1 ? true : false;
+							var vertical   = ((objectGID >> 30) & 1) == 1 ? true : false;
+							var horizontal = ((objectGID >> 31) & 1) == 1 ? true : false;
 							gameObject.transform.localPosition = new Vector3(objectX, objectY, 0);
 							var renderer = new GameObject("Renderer").AddComponent<SpriteRenderer>();
 							renderer.transform.SetParent(gameObject.transform, worldPositionStays: false);
@@ -218,6 +221,8 @@ namespace KITTY {
 							renderer.sortingOrder = i;
 							renderer.drawMode = SpriteDrawMode.Sliced;
 							renderer.size = new Vector2(objectWidth, objectHeight) / tilewidth;
+							renderer.flipX = horizontal;
+							renderer.flipY = vertical;
 							gameObject.transform.localRotation = Quaternion.Euler(0f, 0f, -objectRotation);
 						} else {
 							gameObject.transform.localPosition =
