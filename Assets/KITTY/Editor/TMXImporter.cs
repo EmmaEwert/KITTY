@@ -25,11 +25,17 @@ namespace KITTY {
 			var tileheight  =    (int)document.Attribute("tileheight");
 			var infinite    =    ((int?)document.Attribute("infinite") ?? 0) != 0;
 			var tilesets = document.Elements("tileset").ToArray();
-			if (orientation != "orthogonal") {
+			if (orientation != "orthogonal" && orientation != "isometric") {
 				throw new NotImplementedException("Orientation: " + orientation);
 			} else if (infinite) {
 				throw new NotImplementedException("Infinite: " + infinite);
 			}
+			var layout = orientation == "orthogonal"
+				? GridLayout.CellLayout.Rectangle
+				: orientation == "isometric"
+					? GridLayout.CellLayout.Isometric
+					: GridLayout.CellLayout.Hexagon;
+
 			var layers = document
 				.Elements()
 				.Where(e => e.Name == "layer" || e.Name == "objectgroup")
@@ -47,7 +53,8 @@ namespace KITTY {
 						(string)layerData.Attribute("encoding"),
 						(string)layerData.Attribute("compression"),
 						layerData.Value,
-						layerWidth
+						layerWidth,
+						layout
 					);
 					gidSet.UnionWith(gids[i]);
 				} else { // Object layer
@@ -85,6 +92,8 @@ namespace KITTY {
 			var grid = new GameObject(Path.GetFileNameWithoutExtension(assetPath), typeof(Grid));
 			grid.AddComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Static;
 			grid.isStatic = true;
+			grid.GetComponent<Grid>().cellLayout = layout;
+			grid.GetComponent<Grid>().cellGap = new Vector3(0f, -((float)tileheight / tilewidth), 0f);
 			context.AddObjectToAsset("grid", grid);
 			context.SetMainObject(grid);
 			var collider = grid.AddComponent<CompositeCollider2D>();
@@ -121,7 +130,7 @@ namespace KITTY {
 					layerObject.AddComponent<TilemapCollider2D>().usedByComposite = true;
 					tilemap.color = color;
 					tilemap.SetTilesBlock(bounds, layerTiles);
-					renderer.sortOrder = TilemapRenderer.SortOrder.TopLeft;
+					renderer.sortOrder = TilemapRenderer.SortOrder.TopRight;
 					renderer.sortingOrder = i;
 
 					// Flipped tiles
@@ -258,7 +267,7 @@ namespace KITTY {
 		}
 
 		///<summary>Decode, decompress, and reorder rows of global tile IDs</summary>
-		uint[] ParseGIDs(string encoding, string compression, string data, int width) {
+		uint[] ParseGIDs(string encoding, string compression, string data, int width, GridLayout.CellLayout layout) {
 			// Decoding
 			byte[] input;
 			switch (encoding) {
@@ -278,7 +287,11 @@ namespace KITTY {
 			// Parse bytes as uint32 gids
 			var gids = new uint[output.Length / 4];
 			Buffer.BlockCopy(output, 0, gids, 0, output.Length);
-			return ArrayHelper.Reverse(gids, stride: width);
+			if (layout == GridLayout.CellLayout.Rectangle) {
+				return ArrayHelper.Reverse(gids, stride: width);
+			} else {
+				return ArrayHelper.Swizzle(gids, stride: width).Reverse().ToArray();
+			}
 		}
 
 	}
