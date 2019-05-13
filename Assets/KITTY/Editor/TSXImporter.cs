@@ -1,6 +1,4 @@
 namespace KITTY {
-	using System;
-	using System.Collections.Generic;
 	using System.IO;
 	using System.Linq;
 	using System.Xml.Linq;
@@ -18,84 +16,81 @@ namespace KITTY {
 			var tileset = ScriptableObject.CreateInstance<Tileset>();
 
 			// Attributes
-			tileset.name        = (string )document.Attribute("name");
-			tileset.tilewidth   = (int    )document.Attribute("tilewidth");
-			tileset.tileheight  = (int    )document.Attribute("tileheight");
-			tileset.spacing     = (int?   )document.Attribute("spacing") ?? 0;
-			tileset.margin      = (int?   )document.Attribute("margin") ?? 0;
-			tileset.tilecount   = (int?   )document.Attribute("tilecount") ?? 0;
-			tileset.columns     = (int?   )document.Attribute("columns") ?? 0;
+			tileset.name    = (string )document.Attribute("name");
+			var tilewidth   = (int    )document.Attribute("tilewidth");
+			var tileheight  = (int    )document.Attribute("tileheight");
+			var spacing     = (int?   )document.Attribute("spacing") ?? 0;
+			var margin      = (int?   )document.Attribute("margin") ?? 0;
+			var tilecount   = (int?   )document.Attribute("tilecount") ?? 0;
+			var columns     = (int?   )document.Attribute("columns") ?? 0;
 
 			context.AddObjectToAsset($"tileset_{tileset.name}", tileset);
 
 			// Elements
-			var tileoffset  = document.Element("tileoffset");
-			tileset.tileoffset  = new Vector2Int(
-				(int?)tileoffset?.Attribute("x") ?? 0,
-				(int?)tileoffset?.Attribute("y") ?? 0
+			var tileoffsetElement  = document.Element("tileoffset");
+			var tileoffset  = new Vector2Int(
+				(int?)tileoffsetElement?.Attribute("x") ?? 0,
+				(int?)tileoffsetElement?.Attribute("y") ?? 0
 			);
-			tileset.imageSource = (string)document.Element("image")?.Attribute("source");
-
+			var imageSource = (string)document.Element("image")?.Attribute("source");
 			var tileCollection = document
 				.Elements("tile")
 				.Select(t => LoadTile(t))
 				.OrderBy(t => t.id)
 				.ToArray();
 
-			tileset.tilecount = Mathf.Max(tileset.tilecount, tileCollection.LastOrDefault().id + 1);
+			tilecount = Mathf.Max(tilecount, tileCollection.LastOrDefault().id + 1);
 
 			// Texture
-			if (tileset.imageSource == null) {
-				tileset.columns = tileset.tilecount;
+			Texture2D texture = null;
+			if (imageSource == null) {
+				columns = tilecount;
 			} else {
-				tileset.texture = LoadTexture(tileset.imageSource, context);
-				tileset.columns = tileset.texture.width / tileset.tilewidth;
-				tileset.tilecount = tileset.columns * tileset.texture.height / tileset.tileheight;
+				texture = LoadTexture(imageSource, context);
+				columns = texture.width / tilewidth;
+				tilecount = columns * texture.height / tileheight;
 			}
 
-			var tileArray = new (GameObject prefab, Texture2D texture, Shape[] shapes)[tileset.tilecount];
+			var tileArray = new (GameObject prefab, Texture2D texture, Shape[] shapes)[tilecount];
 			for (var i = 0; i < tileArray.Length; ++i) {
-				tileArray[i].texture = tileset.texture;
+				tileArray[i].texture = texture;
 			}
 			foreach (var tile in tileCollection) {
 				tileArray[tile.id] = (
 					prefab: PrefabHelper.Load(tile.type, context),
-					texture: tileset.texture ?? LoadTexture(tile.image, context),
+					texture: texture ?? LoadTexture(tile.image, context),
 					shapes: tile.shapes
 				);
 			}
 
-			// Sprites
-			tileset.sprites = new Tileset.Sprite[tileset.tilecount];
-			tileset.spritePivot =
-				Vector2.one * 0.5f
-				- tileset.tileoffset
-				/ new Vector2(tileset.tilewidth, tileset.tileheight);
-			for (var i = 0u; i < tileset.sprites.Length; ++i) {
-				var s0 = new Vector2Int(tileset.tilewidth, tileset.tileheight);
-				var s1 = new Vector2Int(tileset.spacing, 0);
-				var spacing = new Vector4(s0.x, s0.y, s0.x, s0.y) + new Vector4(s1.x, s1.x, s1.y, s1.y);
-				var margin = new Vector4(tileset.margin, tileset.margin, 0, 0);
-				var rows = tileset.tilecount / tileset.columns;
-				var rect = Vector4.Scale(spacing, new Vector4(i % tileset.columns, rows - i / tileset.columns - 1, 1, 1)) + margin;
-				var texture = tileArray[i].texture;
-				tileset.sprites[i].texture = texture;
-				tileset.sprites[i].tileset = tileset;
-				if (string.IsNullOrEmpty(tileset.imageSource)) { // Image collection
-					tileset.sprites[i].rect = new Rect(0, 0, texture?.width ?? 0, texture?.height ?? 0);
-				} else if (tileset.texture) {
-					tileset.sprites[i].rect = new Rect(rect.x, rect.y + (tileset.texture.height - rows * tileset.tileheight - rows * tileset.spacing - margin.x), rect.z, rect.w);
+			// Tiles
+			tileset.tiles = new Tileset.Tile[tilecount];
+			var pivot = Vector2.one * 0.5f - tileoffset / new Vector2(tilewidth, tileheight);
+			for (var i = 0; i < tileset.tiles.Length; ++i) {
+				var rows = tilecount / columns;
+				var tileSpacing = new Vector4(tilewidth + spacing, tileheight + spacing, tilewidth, tileheight);
+				var tileMargin = new Vector4(margin, margin, 0, 0);
+				var position = new Vector4(i % columns, rows - i / columns - 1, 1, 1);
+				var rect = Vector4.Scale(position, tileSpacing) + tileMargin;
+				var tileTexture = tileArray[i].texture;
+				tileset.tiles[i].prefab = tileArray[i].prefab;
+				tileset.tiles[i].texture = tileTexture;
+				tileset.tiles[i].pivot = pivot;
+				if (string.IsNullOrEmpty(imageSource)) { // Image collection
+					tileset.tiles[i].rect = new Rect(0, 0, tileTexture?.width ?? 0, tileTexture?.height ?? 0);
+				} else if (texture) {
+					tileset.tiles[i].rect = new Rect(rect.x, rect.y + (tileTexture.height - rows * tileheight - rows * spacing - tileMargin.x), rect.z, rect.w);
 				} else {
 					continue;
 				}
 				var shapes = tileArray[i].shapes;
 				if (shapes != null) {
-					tileset.sprites[i].shapes = new Vector2[shapes.Length][];
+					tileset.tiles[i].shapes = new Vector2[shapes.Length][];
 					for (var j = 0; j < shapes.Length; ++j) {
 						var obj = shapes[j];
 						// Rectangle shape
 						if (obj.width > 0 && obj.height > 0) {
-							tileset.sprites[i].shapes[j] = new [] {
+							tileset.tiles[i].shapes[j] = new [] {
 								new Vector2(obj.x, rect.w - obj.y),
 								new Vector2(obj.x, rect.w - obj.y - obj.height),
 								new Vector2(obj.x + obj.width, rect.w - obj.y - obj.height),
@@ -104,31 +99,16 @@ namespace KITTY {
 						// Polygon shape
 						} else if (obj.points != null) {
 							var points = obj.points.Split(' ');
-							tileset.sprites[i].shapes[j] = new Vector2[points.Length];
+							tileset.tiles[i].shapes[j] = new Vector2[points.Length];
 							for (var k = 0; k < points.Length; ++k) {
 								var point = points[k].Split(',');
 								var x = float.Parse(point[0]);
 								var y = float.Parse(point[1]);
-								tileset.sprites[i].shapes[j][k] =
+								tileset.tiles[i].shapes[j][k] =
 									new Vector2(obj.x + x, rect.w - obj.y - y);
 							}
 						}
 					}
-				}
-			}
-
-			// Tiles
-			tileset.tiles = new Tileset.Tile[tileset.tilecount];
-
-			// Typed tiles
-			foreach (var tile in tileCollection) {
-				var id = tile.id;
-				var type = tile.type;
-				var gameObject = PrefabHelper.Load(type, context);
-				if (gameObject) {
-					tileset.tiles[id].gameObject = gameObject;
-				} else if (!string.IsNullOrEmpty(type)) {
-					Debug.LogWarning($"No prefab named \"{type}\" could be found, skipping.");
 				}
 			}
 

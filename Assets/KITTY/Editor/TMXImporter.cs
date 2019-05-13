@@ -74,11 +74,9 @@ namespace KITTY {
 				var tilesetTiles = new Tile[tileset.tiles.Length];
 				for (var i = 0; i < tilesetTiles.Length; ++i) {
 					if (!gidSet.Contains((uint)(i + firstgid))) { continue; }
-					var sprite = tileset.sprites[i].Instantiate(tilewidth);
-					var tile = tileset.tiles[i].Instantiate(sprite);
-					context.AddObjectToAsset($"sprite{i + firstgid:0000}", sprite);
-					context.AddObjectToAsset($"tile{i + firstgid:0000}", tile);
-					tilesetTiles[i] = tile;
+					tilesetTiles[i] = tileset.tiles[i].Instantiate(tilewidth);
+					context.AddObjectToAsset($"tile{i + firstgid:0000}", tilesetTiles[i]);
+					context.AddObjectToAsset($"sprite{i + firstgid:0000}", tilesetTiles[i].sprite);
 				}
 				ArrayUtility.AddRange(ref tiles, tilesetTiles);
 			}
