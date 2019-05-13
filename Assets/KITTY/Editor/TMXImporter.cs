@@ -97,6 +97,7 @@ namespace KITTY {
 				var name = (string)layer.Attribute("name");
 				var offsetx =  ((float?)layer.Attribute("offsetx") ?? 0) / tilewidth;
 				var offsety = -((float?)layer.Attribute("offsety") ?? 0) / tilewidth;
+				var color = new Color(1f, 1f, 1f, ((float?)layer.Attribute("opacity") ?? 1f));
 				var layerObject = new GameObject(name);
 				layerObject.transform.parent = grid.transform;
 				layerObject.isStatic = true;
@@ -118,6 +119,7 @@ namespace KITTY {
 					var tilemap = layerObject.AddComponent<Tilemap>();
 					var renderer = layerObject.AddComponent<TilemapRenderer>();
 					layerObject.AddComponent<TilemapCollider2D>().usedByComposite = true;
+					tilemap.color = color;
 					tilemap.SetTilesBlock(bounds, layerTiles);
 					renderer.sortOrder = TilemapRenderer.SortOrder.TopLeft;
 					renderer.sortingOrder = i;
@@ -223,6 +225,7 @@ namespace KITTY {
 							renderer.size = new Vector2(objectWidth, objectHeight) / tilewidth;
 							renderer.flipX = horizontal;
 							renderer.flipY = vertical;
+							renderer.color = color;
 							gameObject.transform.localRotation = Quaternion.Euler(0f, 0f, -objectRotation);
 						} else {
 							gameObject.transform.localPosition =
