@@ -9,9 +9,7 @@ namespace KITTY {
 	///<summary>Tiled TSX tileset importer.</summary>
 	[ScriptedImporter(2, "tsx", 1)]
 	internal class TSXImporter : ScriptedImporter {
-		public static Tileset Load(AssetImportContext context, XElement document) {
-			var tsx = new TSX(document);
-
+		public static Tileset Load(AssetImportContext context, TSX tsx) {
 			// Image collection tilesets can have gaps in their IDs; use the highest ID instead.
 			var tilecount = Mathf.Max(tsx.tilecount, tsx.tiles.LastOrDefault().id + 1);
 
@@ -49,7 +47,7 @@ namespace KITTY {
 
 			// Tiles
 			var tileset = ScriptableObject.CreateInstance<Tileset>();
-			tileset.name = (string)document.Attribute("name");
+			tileset.name = tsx.name;
 			tileset.tiles = new Tileset.Tile[tilecount];
 			var pivot = Vector2.one * 0.5f - new Vector2(tsx.tileoffset.x, tsx.tileoffset.y) / new Vector2(tsx.tilewidth, tsx.tileheight);
 			for (var i = 0; i < tileset.tiles.Length; ++i) {
@@ -59,7 +57,7 @@ namespace KITTY {
 				tileset.tiles[i].pivot = pivot;
 				tileset.tiles[i].rect = new Rect(
 					texture ? (tsx.tilewidth + tsx.spacing) * (i % columns) + tsx.margin: 0,
-					texture ? (tsx.tileheight + tsx.spacing) * (rows - i / columns - 1) + texture.height - rows * tsx.tileheight - rows * tsx.spacing + tsx.margin : 0,
+					texture ? (tsx.tileheight + tsx.spacing) * (rows - i / columns - 1) + texture.height - rows * tsx.tileheight - rows * tsx.spacing : 0,
 					texture ? tsx.tilewidth : tileTexture?.width ?? 0,
 					texture ? tsx.tileheight : tileTexture?.height ?? 0
 				);
@@ -72,7 +70,7 @@ namespace KITTY {
 
 		///<summary>Construct a tileset from Tiled by instantiating one tile per texture sprite.</summary>
 		public override void OnImportAsset(AssetImportContext context) {
-			Load(context, XDocument.Load(assetPath).Element("tileset"));
+			Load(context, new TSX(XDocument.Load(assetPath).Element("tileset")));
 		}
 
 		///<summary>Parse collision shapes; either position and size, or list of points.</summary>
@@ -82,29 +80,26 @@ namespace KITTY {
 			}
 			var objects = new Tileset.Tile.Object[tsxObjects.Length];
 			for (var j = 0; j < objects.Length; ++j) {
-				var obj = tsxObjects[j];
-				// Rectangle shape
-				if (obj.width > 0 && obj.height > 0) {
+				var @object = tsxObjects[j];
+				// Rectangle shape.
+				if (@object.width > 0 && @object.height > 0) {
 					objects[j] = new Tileset.Tile.Object {
 						points = new [] {
-							new Vector2(obj.x, height - obj.y),
-							new Vector2(obj.x, height - obj.y - obj.height),
-							new Vector2(obj.x + obj.width, height - obj.y - obj.height),
-							new Vector2(obj.x + obj.width, height - obj.y)
+							new Vector2(@object.x, height - @object.y),
+							new Vector2(@object.x, height - @object.y - @object.height),
+							new Vector2(@object.x + @object.width, height - @object.y - @object.height),
+							new Vector2(@object.x + @object.width, height - @object.y)
 						}
 					};
-				// Polygon shape
-				} else if (obj.points != null) {
-					var points = obj.points.Split(' ');
-					objects[j] = new Tileset.Tile.Object {
-						points = new Vector2[points.Length]
-					};
+				// Polygon shape.
+				} else if (@object.points != null) {
+					var points = @object.points.Split(' ');
+					objects[j] = new Tileset.Tile.Object { points = new Vector2[points.Length] };
 					for (var k = 0; k < points.Length; ++k) {
 						var point = points[k].Split(',');
 						var x = float.Parse(point[0]);
 						var y = float.Parse(point[1]);
-						objects[j].points[k] =
-							new Vector2(obj.x + x, height - obj.y - y);
+						objects[j].points[k] = new Vector2(@object.x + x, height - @object.y - y);
 					}
 				}
 			}

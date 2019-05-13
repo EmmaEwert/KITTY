@@ -15,75 +15,55 @@ namespace KITTY {
 	internal class TMXImporter : ScriptedImporter {
 		///<summary>Construct a tilemap from Tiled, adding named prefab instances based on Type.</summary>
 		public override void OnImportAsset(AssetImportContext context) {
-			var document = XDocument.Load(assetPath).Element("map");
-
-			// Attributes
-			var orientation = (string)document.Attribute("orientation");
-			var width       =    (int)document.Attribute("width");
-			var height      =    (int)document.Attribute("height");
-			var tilewidth   =    (int)document.Attribute("tilewidth");
-			var tileheight  =    (int)document.Attribute("tileheight");
-			var infinite    =    ((int?)document.Attribute("infinite") ?? 0) != 0;
-			var tilesets = document.Elements("tileset").ToArray();
-			if (orientation != "orthogonal" && orientation != "isometric" && orientation != "hexagonal") {
-				throw new NotImplementedException("Orientation: " + orientation);
-			} else if (infinite) {
-				throw new NotImplementedException("Infinite: " + infinite);
+			var assetPathPrefix = Path.GetDirectoryName(assetPath) + Path.DirectorySeparatorChar;
+			// TODO: Support ../source.tsx
+			var tmx = new TMX(XDocument.Load(assetPath).Element("map"), assetPathPrefix);
+			if (tmx.infinite) {
+				throw new NotImplementedException("Infinite: " + tmx.infinite);
 			}
-			var layout = orientation == "orthogonal"
+			var layout = tmx.orientation == "orthogonal"
 				? GridLayout.CellLayout.Rectangle
-				: orientation == "isometric"
+				: tmx.orientation == "isometric"
 					? GridLayout.CellLayout.Isometric
 					: GridLayout.CellLayout.Hexagon;
 
-			var layers = document
-				.Elements()
-				.Where(e => e.Name == "layer" || e.Name == "objectgroup")
-				.ToArray();
-			var gids = new uint[layers.Length][];
+			var gids = new uint[tmx.layers.Length][];
 			var gidSet = new HashSet<uint>();
 			// TODO: & 0x1fffffff the gidSet values from tile gids[]
-			for (var i = 0; i < layers.Length; ++i) {
-				var layer = layers[i];
-				var name = (string)layer.Attribute("name");
-				if (layer.Name == "layer") { // Tile layer
-					var layerWidth = (int)layer.Attribute("width");
-					var layerData = layer.Element("data");
+			for (var i = 0; i < tmx.layers.Length; ++i) {
+				var layer = tmx.layers[i];
+				if (layer.data.value != null) { // Tile layer
 					gids[i] = ParseGIDs(
-						(string)layerData.Attribute("encoding"),
-						(string)layerData.Attribute("compression"),
-						layerData.Value,
-						layerWidth,
+						layer.data.encoding,
+						layer.data.compression,
+						layer.data.value,
+						layer.width,
 						layout
 					);
 					gidSet.UnionWith(gids[i]);
 				} else { // Object layer
-					var objects = layer.Elements("object").ToArray();
-					foreach (var obj in objects) {
-						gidSet.Add(((uint?)obj.Attribute("gid") ?? 0) & 0x1fffffff);
+					foreach (var @object in layer.objects) {
+						gidSet.Add(@object.gid & 0x1fffffff);
 					}
 				}
 			}
 
 			// Tilesets
-			var assetPathPrefix = Path.GetDirectoryName(assetPath) + Path.DirectorySeparatorChar;
 			var tiles = new Tile[1]; // Global Tile IDs start from 1
-			foreach (var tilesetElement in tilesets) {
+			foreach (var tsx in tmx.tilesets) {
 				Tileset tileset = null;
-				var firstgid = (int)tilesetElement.Attribute("firstgid");
-				var tilesetPath = (string)tilesetElement.Attribute("source");
-				if (tilesetPath == null) { // Embedded tileset
-					tileset = TSXImporter.Load(context, tilesetElement);
+				if (tsx.source == null) { // Embedded tileset
+					tileset = TSXImporter.Load(context, tsx);
 				} else { // External tileset
-					tileset = AssetDatabase.LoadAssetAtPath<Tileset>(assetPathPrefix + tilesetPath);
-					context.DependsOnSourceAsset(assetPathPrefix + tilesetPath);
+					tileset = AssetDatabase.LoadAssetAtPath<Tileset>(assetPathPrefix + tsx.source);
+					context.DependsOnSourceAsset(assetPathPrefix + tsx.source);
 				}
 				var tilesetTiles = new Tile[tileset.tiles.Length];
 				for (var i = 0; i < tilesetTiles.Length; ++i) {
-					if (!gidSet.Contains((uint)(i + firstgid))) { continue; }
-					tilesetTiles[i] = tileset.tiles[i].Instantiate(tilewidth);
-					context.AddObjectToAsset($"tile{i + firstgid:0000}", tilesetTiles[i]);
-					context.AddObjectToAsset($"sprite{i + firstgid:0000}", tilesetTiles[i].sprite);
+					if (!gidSet.Contains((uint)(i + tsx.firstgid))) { continue; }
+					tilesetTiles[i] = tileset.tiles[i].Instantiate(tmx.tilewidth);
+					context.AddObjectToAsset($"tile{i + tsx.firstgid:0000}", tilesetTiles[i]);
+					context.AddObjectToAsset($"sprite{i + tsx.firstgid:0000}", tilesetTiles[i].sprite);
 				}
 				ArrayUtility.AddRange(ref tiles, tilesetTiles);
 			}
@@ -93,8 +73,7 @@ namespace KITTY {
 			grid.AddComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Static;
 			grid.isStatic = true;
 			grid.GetComponent<Grid>().cellLayout = layout;
-			grid.GetComponent<Grid>().cellSize = new Vector3(1f, (float)tileheight / tilewidth, 1f);
-			//grid.transform.localScale = layout == GridLayout.CellLayout.Hexagon ? new Vector3(1f, -1f, 1f) : Vector3.one;
+			grid.GetComponent<Grid>().cellSize = new Vector3(1f, (float)tmx.tileheight / tmx.tilewidth, 1f);
 			context.AddObjectToAsset("grid", grid);
 			context.SetMainObject(grid);
 			var collider = grid.AddComponent<CompositeCollider2D>();
@@ -102,21 +81,16 @@ namespace KITTY {
 
 			// Layers
 			PrefabHelper.cache.Clear();
-			for (var i = 0; i < layers.Length; ++i) {
-				var layer = layers[i];
-				var name = (string)layer.Attribute("name");
-				var offsetx =  ((float?)layer.Attribute("offsetx") ?? 0) / tilewidth;
-				var offsety = -((float?)layer.Attribute("offsety") ?? 0) / tilewidth;
-				var color = new Color(1f, 1f, 1f, ((float?)layer.Attribute("opacity") ?? 1f));
-				var layerObject = new GameObject(name);
+			for (var i = 0; i < tmx.layers.Length; ++i) {
+				var layer = tmx.layers[i];
+				var layerObject = new GameObject(layer.name);
 				layerObject.transform.parent = grid.transform;
 				layerObject.isStatic = true;
 
 				// Tile layer
-				if (layer.Name == "layer") {
-					var layerWidth = (int)layer.Attribute("width");
-					var layerHeight = (int)layer.Attribute("height");
-					var layerData = layer.Element("data");
+				if (layer.data.value != null) {
+					var layerWidth = layer.width;//(int)layer.Attribute("width");
+					var layerHeight = layer.height;//(int)layer.Attribute("height");
 
 					// Tilemap
 					var layerTiles = new Tile[gids[i].Length];
@@ -129,7 +103,7 @@ namespace KITTY {
 					var tilemap = layerObject.AddComponent<Tilemap>();
 					var renderer = layerObject.AddComponent<TilemapRenderer>();
 					layerObject.AddComponent<TilemapCollider2D>().usedByComposite = true;
-					tilemap.color = color;
+					tilemap.color = new Color(1f, 1f, 1f, layer.opacity);
 					tilemap.orientation = layout == GridLayout.CellLayout.Hexagon ? Tilemap.Orientation.Custom : Tilemap.Orientation.XY;
 					tilemap.orientationMatrix = Matrix4x4.TRS(
 						Vector3.zero,
@@ -148,7 +122,7 @@ namespace KITTY {
 						var horizontal = (gids[i][j] >> 31) & 1;
 						var flips = new Vector4(diagonal, vertical, horizontal, 0);
 						if (flips.sqrMagnitude > 0f) {
-							var position = new Vector3Int(j % width, j / width, 0);
+							var position = new Vector3Int(j % tmx.width, j / tmx.width, 0);
 							var transform = Matrix4x4.TRS(
 								Vector3.zero,
 								Quaternion.AngleAxis(diagonal * 180, new Vector3(1, 1, 0)),
@@ -160,58 +134,35 @@ namespace KITTY {
 
 				// Object layer
 				} else {
-					var objects = layer.Elements("object").ToArray();
-					foreach (var obj in objects) {
-						// Attributes
-						var objectID       =    (int)obj.Attribute("id");
-						var objectName     = (string)obj.Attribute("name");
-						var objectType     = (string)obj.Attribute("type");
-						var objectGID      =  (uint?)obj.Attribute("gid") ?? 0;
-						var objectX        =  (float)obj.Attribute("x") / tileheight;
-						var objectY        = -(float)obj.Attribute("y") / tileheight + height;
-						var objectWidth    = (float?)obj.Attribute("width") ?? 0;
-						var objectHeight   = (float?)obj.Attribute("height") ?? 0;
-						var objectRotation = (float?)obj.Attribute("rotation") ?? 0;
-
-						// Elements
-						var objPropElems = obj.Element("properties")?.Elements("property");
-						var props = new List<(string name, string type, string value)>();
-						if (objPropElems != null) {
-							foreach (var propElem in objPropElems) {
-								var propName = (string)propElem.Attribute("name");
-								var propType = (string)propElem.Attribute("type") ?? "string";
-								var propValue = (string)propElem.Attribute("value") ?? propElem.Value;
-								props.Add((propName, propType, propValue));
-							}
-						}
-
-						var tile = tiles[objectGID & 0x1fffffff]; // TODO: Flip
+					var objects = layer.objects;//layer.Elements("object").ToArray();
+					foreach (var @object in objects) {
+						var tile = tiles[@object.gid & 0x1fffffff];
 						string icon = null;
 						GameObject gameObject; // Doubles as prefab when object has type
 
 						// Default instantiation when object has no set type
-						if (string.IsNullOrEmpty(objectType)) {
-							gameObject = new GameObject($"{objectName} {objectID}".Trim());
+						if (string.IsNullOrEmpty(@object.type)) {
+							gameObject = new GameObject($"{@object.name} {@object.id}".Trim());
 							icon = "sv_label_0";
 
 						// Warn instantiation when object has type but no prefab was found
-						} else if (null == (gameObject = PrefabHelper.Load(objectType, context))) {
-							var gameObjectName = string.IsNullOrEmpty(objectName) ? objectType : objectName;
-							gameObject = new GameObject($"{gameObjectName} {objectID}".Trim());
+						} else if (null == (gameObject = PrefabHelper.Load(@object.type, context))) {
+							var gameObjectName = string.IsNullOrEmpty(@object.name) ? @object.type : @object.name;
+							gameObject = new GameObject($"{gameObjectName} {@object.id}".Trim());
 							icon = "sv_label_6";
-							Debug.LogWarning($"No prefab named \"{objectType}\" could be found, skipping.");
+							Debug.LogWarning($"No prefab named \"{@object.type}\" could be found, skipping.");
 
 						// Prefab instantiation based on object type
 						} else {
 							gameObject = PrefabUtility.InstantiatePrefab(gameObject) as GameObject;
-							gameObject.name = $"{objectName} {objectID}".Trim();
+							gameObject.name = $"{@object.name} {@object.id}".Trim();
 							foreach (var component in gameObject.GetComponentsInChildren<MonoBehaviour>()) {
 								foreach (var field in component.GetType().GetFields(BindingFlags.Public | BindingFlags.NonPublic)) {
 									var attribute = field.GetCustomAttribute<TiledPropertyAttribute>();
 									if (attribute == null) { continue; }
 									var fieldName = attribute.name ?? field.Name.ToLower();
 									var fieldType = field.FieldType.ToString().ToLower();
-									foreach (var prop in props) {
+									foreach (var prop in @object.properties) {
 										if (prop.name.ToLower() == fieldName && prop.type == fieldType) {
 											switch (prop.type) {
 												case "string": field.SetValue(component, prop.value); break;
@@ -230,23 +181,23 @@ namespace KITTY {
 						// Object sprite
 						var sprite = tile?.sprite;
 						if (sprite) {
-							var diagonal   = ((objectGID >> 29) & 1) == 1 ? true : false;
-							var vertical   = ((objectGID >> 30) & 1) == 1 ? true : false;
-							var horizontal = ((objectGID >> 31) & 1) == 1 ? true : false;
-							gameObject.transform.localPosition = new Vector3(objectX, objectY, 0);
+							var diagonal   = ((@object.gid >> 29) & 1) == 1 ? true : false;
+							var vertical   = ((@object.gid >> 30) & 1) == 1 ? true : false;
+							var horizontal = ((@object.gid >> 31) & 1) == 1 ? true : false;
+							gameObject.transform.localPosition = new Vector3(@object.x / tmx.tileheight, -@object.y / tmx.tileheight + tmx.height, 0);
 							var renderer = new GameObject("Renderer").AddComponent<SpriteRenderer>();
 							renderer.transform.SetParent(gameObject.transform, worldPositionStays: false);
 							renderer.sprite = sprite;
 							renderer.sortingOrder = i;
 							renderer.drawMode = SpriteDrawMode.Sliced;
-							renderer.size = new Vector2(objectWidth, objectHeight) / tilewidth;
+							renderer.size = new Vector2(@object.width, @object.height) / tmx.tilewidth;
 							renderer.flipX = horizontal;
 							renderer.flipY = vertical;
-							renderer.color = color;
-							gameObject.transform.localRotation = Quaternion.Euler(0f, 0f, -objectRotation);
+							renderer.color = new Color(1f, 1f, 1f, layer.opacity);
+							gameObject.transform.localRotation = Quaternion.Euler(0f, 0f, -@object.rotation);
 						} else {
 							gameObject.transform.localPosition =
-								new Vector3(objectX, objectY - (float)objectHeight / tileheight, 0);
+								new Vector3(@object.x / tmx.tileheight, -@object.y / tmx.tileheight + tmx.height - @object.height / tmx.tileheight, 0);
 						}
 
 						// Icon
@@ -260,7 +211,7 @@ namespace KITTY {
 						// Align children to center of object
 						// TODO: Please don't maybe?
 						foreach (Transform child in gameObject.transform) {
-							var localPosition = new Vector2(objectWidth, objectHeight) / tilewidth / 2f;
+							var localPosition = new Vector2(@object.width, @object.height) / tmx.tilewidth / 2f;
 							child.localPosition = new Vector3(
 								localPosition.x,
 								localPosition.y,

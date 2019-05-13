@@ -4,6 +4,8 @@ namespace KITTY {
 
 	internal struct TSX {
 		// Attributes
+		public int firstgid;
+		public string source;
 		public string name;
 		public int tilewidth;
 		public int tileheight;
@@ -17,15 +19,31 @@ namespace KITTY {
 		public Image image;
 		public Tile[] tiles;
 
-		public TSX(XElement element) {
+		public TSX(XElement element, string assetPath = "") {
 			// Attributes
-			name        = (string )element.Attribute("name");
-			tilewidth   = (int    )element.Attribute("tilewidth");
-			tileheight  = (int    )element.Attribute("tileheight");
-			spacing     = (int?   )element.Attribute("spacing") ?? 0;
-			margin      = (int?   )element.Attribute("margin") ?? 0;
-			tilecount   = (int?   )element.Attribute("tilecount") ?? 0;
-			columns     = (int?   )element.Attribute("columns") ?? 0;
+			firstgid    = (int?  )element.Attribute("firstgid") ?? 0;
+			source      = (string)element.Attribute("source");
+			if (!string.IsNullOrEmpty(source)) { // External tileset
+				var tsx = new TSX(XDocument.Load(assetPath + source).Element("tileset"));
+				name = tsx.name;
+				tilewidth = tsx.tilewidth;
+				tileheight = tsx.tileheight;
+				spacing = tsx.spacing;
+				margin = tsx.margin;
+				tilecount = tsx.tilecount;
+				columns = tsx.columns;
+				tileoffset = tsx.tileoffset;
+				image = tsx.image;
+				tiles = tsx.tiles;
+				return;
+			}
+			name        = (string)element.Attribute("name");
+			tilewidth   = (int   )element.Attribute("tilewidth");
+			tileheight  = (int   )element.Attribute("tileheight");
+			spacing     = (int?  )element.Attribute("spacing") ?? 0;
+			margin      = (int?  )element.Attribute("margin") ?? 0;
+			tilecount   = (int?  )element.Attribute("tilecount") ?? 0;
+			columns     = (int?  )element.Attribute("columns") ?? 0;
 
 			// Elements
 			tileoffset = new Tileoffset(element.Element("tileoffset"));
