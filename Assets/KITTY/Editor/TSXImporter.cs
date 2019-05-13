@@ -33,6 +33,11 @@ namespace KITTY {
 				(int?)tileoffsetElement?.Attribute("y") ?? 0
 			);
 			var imageSource = (string)document.Element("image")?.Attribute("source");
+			var imageTrans  = (string)document.Element("image")?.Attribute("trans");
+			var transparent = Color.clear;
+			if (imageTrans != null) {
+				ColorUtility.TryParseHtmlString($"#{imageTrans}".Substring(imageTrans.Length - 6), out transparent);
+			}
 			var tileCollection = document
 				.Elements("tile")
 				.Select(t => LoadTile(t))
@@ -46,7 +51,7 @@ namespace KITTY {
 			if (imageSource == null) {
 				columns = tilecount;
 			} else {
-				texture = LoadTexture(imageSource, context);
+				texture = LoadTexture(imageSource, transparent, context);
 				columns = texture.width / tilewidth;
 				tilecount = columns * texture.height / tileheight;
 			}
@@ -58,7 +63,7 @@ namespace KITTY {
 			foreach (var tile in tileCollection) {
 				tileArray[tile.id] = (
 					prefab: PrefabHelper.Load(tile.type, context),
-					texture: texture ?? LoadTexture(tile.image, context),
+					texture: texture ?? LoadTexture(tile.image, transparent, context),
 					shapes: tile.shapes
 				);
 			}
@@ -120,7 +125,7 @@ namespace KITTY {
 			tileset = Load(context, XDocument.Load(assetPath).Element("tileset"));
 		}
 
-		static Texture2D LoadTexture(string filename, AssetImportContext context) {
+		static Texture2D LoadTexture(string filename, Color transparent, AssetImportContext context) {
 			var imageAssetPath = Path.GetFullPath(
 				Path.GetDirectoryName(context.assetPath)
 				+ Path.DirectorySeparatorChar
@@ -131,6 +136,17 @@ namespace KITTY {
 			imageAssetPath = "Assets" + imageAssetPath.Substring(Application.dataPath.Length);
 			var texture = AssetDatabase.LoadMainAssetAtPath(imageAssetPath) as Texture2D;
 			if (texture) {
+				if (transparent != Color.clear) {
+					var transparentTexture = new Texture2D(texture.width, texture.height, TextureFormat.ARGB32, false) { filterMode = texture.filterMode };
+					var colors = texture.GetPixels();
+					for (var i = 0; i < colors.Length; ++i) {
+						colors[i] = colors[i] == transparent ? Color.clear : colors[i];
+					}
+					transparentTexture.SetPixels(colors);
+					transparentTexture.name = $"texture_{filename}";
+					context.AddObjectToAsset($"texture_{filename}", transparentTexture);
+					texture = transparentTexture;
+				}
 				context.DependsOnSourceAsset(imageAssetPath);
 			} else {
 				throw new FileNotFoundException($"could not load texture \"{imageAssetPath}\" ({filename}) of tileset \"{context.assetPath}\".");
