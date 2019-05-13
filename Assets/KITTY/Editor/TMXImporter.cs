@@ -25,7 +25,7 @@ namespace KITTY {
 			var tileheight  =    (int)document.Attribute("tileheight");
 			var infinite    =    ((int?)document.Attribute("infinite") ?? 0) != 0;
 			var tilesets = document.Elements("tileset").ToArray();
-			if (orientation != "orthogonal" && orientation != "isometric") {
+			if (orientation != "orthogonal" && orientation != "isometric" && orientation != "hexagonal") {
 				throw new NotImplementedException("Orientation: " + orientation);
 			} else if (infinite) {
 				throw new NotImplementedException("Infinite: " + infinite);
@@ -93,7 +93,8 @@ namespace KITTY {
 			grid.AddComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Static;
 			grid.isStatic = true;
 			grid.GetComponent<Grid>().cellLayout = layout;
-			grid.GetComponent<Grid>().cellGap = new Vector3(0f, -((float)tileheight / tilewidth), 0f);
+			grid.GetComponent<Grid>().cellSize = new Vector3(1f, (float)tileheight / tilewidth, 1f);
+			//grid.transform.localScale = layout == GridLayout.CellLayout.Hexagon ? new Vector3(1f, -1f, 1f) : Vector3.one;
 			context.AddObjectToAsset("grid", grid);
 			context.SetMainObject(grid);
 			var collider = grid.AddComponent<CompositeCollider2D>();
@@ -129,8 +130,15 @@ namespace KITTY {
 					var renderer = layerObject.AddComponent<TilemapRenderer>();
 					layerObject.AddComponent<TilemapCollider2D>().usedByComposite = true;
 					tilemap.color = color;
+					tilemap.orientation = layout == GridLayout.CellLayout.Hexagon ? Tilemap.Orientation.Custom : Tilemap.Orientation.XY;
+					tilemap.orientationMatrix = Matrix4x4.TRS(
+						Vector3.zero,
+						Quaternion.Euler(0f, 180f, 180f),
+						Vector3.one
+					);
+					tilemap.transform.localScale = layout == GridLayout.CellLayout.Hexagon ? new Vector3(1f, -1f, 1f) : Vector3.one;
 					tilemap.SetTilesBlock(bounds, layerTiles);
-					renderer.sortOrder = TilemapRenderer.SortOrder.TopRight;
+					renderer.sortOrder = layout == GridLayout.CellLayout.Hexagon ? TilemapRenderer.SortOrder.BottomLeft : TilemapRenderer.SortOrder.TopRight;
 					renderer.sortingOrder = i;
 
 					// Flipped tiles
@@ -289,8 +297,10 @@ namespace KITTY {
 			Buffer.BlockCopy(output, 0, gids, 0, output.Length);
 			if (layout == GridLayout.CellLayout.Rectangle) {
 				return ArrayHelper.Reverse(gids, stride: width);
-			} else {
+			} else if (layout == GridLayout.CellLayout.Isometric) {
 				return ArrayHelper.Swizzle(gids, stride: width).Reverse().ToArray();
+			} else {
+				return gids;
 			}
 		}
 
