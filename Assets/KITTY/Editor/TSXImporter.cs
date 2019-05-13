@@ -9,107 +9,91 @@ namespace KITTY {
 	///<summary>Tiled TSX tileset importer.</summary>
 	[ScriptedImporter(2, "tsx", 1)]
 	internal class TSXImporter : ScriptedImporter {
-		Tileset tileset;
-
 		public static Tileset Load(AssetImportContext context, XElement document) {
-			// Tileset object
-			var tileset = ScriptableObject.CreateInstance<Tileset>();
+			var tsx = new TSX(document);
 
-			// Attributes
-			tileset.name    = (string )document.Attribute("name");
-			var tilewidth   = (int    )document.Attribute("tilewidth");
-			var tileheight  = (int    )document.Attribute("tileheight");
-			var spacing     = (int?   )document.Attribute("spacing") ?? 0;
-			var margin      = (int?   )document.Attribute("margin") ?? 0;
-			var tilecount   = (int?   )document.Attribute("tilecount") ?? 0;
-			var columns     = (int?   )document.Attribute("columns") ?? 0;
-
-			context.AddObjectToAsset($"tileset_{tileset.name}", tileset);
-
-			// Elements
-			var tileoffsetElement  = document.Element("tileoffset");
-			var tileoffset  = new Vector2Int(
-				(int?)tileoffsetElement?.Attribute("x") ?? 0,
-				(int?)tileoffsetElement?.Attribute("y") ?? 0
-			);
-			var imageSource = (string)document.Element("image")?.Attribute("source");
-			var imageTrans  = (string)document.Element("image")?.Attribute("trans");
-			var transparent = Color.clear;
-			if (imageTrans != null) {
-				ColorUtility.TryParseHtmlString($"#{imageTrans}".Substring(imageTrans.Length - 6), out transparent);
-			}
-			var tileCollection = document
-				.Elements("tile")
-				.Select(t => LoadTile(t))
-				.OrderBy(t => t.id)
-				.ToArray();
-
-			tilecount = Mathf.Max(tilecount, tileCollection.LastOrDefault().id + 1);
+			// Image collection tilesets can have gaps in their IDs; use the highest ID instead.
+			var tilecount = Mathf.Max(tsx.tilecount, tsx.tiles.LastOrDefault().id + 1);
 
 			// Texture
 			Texture2D texture = null;
-			if (imageSource == null) {
+			var columns = 0;
+			var rows = 0;
+			var tiles = new (GameObject prefab, Texture2D texture, TSX.Tile.Object[] objects)[tilecount];
+			if (tsx.image.source == null) {
+				// Image collection tilesets don't have images or column counts; use a single row.
 				columns = tilecount;
+				rows = 1;
 			} else {
-				texture = LoadTexture(imageSource, transparent, context);
-				columns = texture.width / tilewidth;
-				tilecount = columns * texture.height / tileheight;
+				texture = LoadTexture(tsx.image.source, tsx.image.trans, context);
+				// Column count might not exist, so just compute it instead.
+				columns = texture.width / tsx.tilewidth;
+				rows = texture.height / tsx.tileheight;
+				// Tile count depends only on column and row count.
+				tilecount = columns * rows;
+				// Single-image tilesets all use the same texture.
+				for (var i = 0; i < tiles.Length; ++i) {
+					tiles[i].texture = texture;
+				}
 			}
 
-			var tileArray = new (GameObject prefab, Texture2D texture, Shape[] shapes)[tilecount];
-			for (var i = 0; i < tileArray.Length; ++i) {
-				tileArray[i].texture = texture;
-			}
-			foreach (var tile in tileCollection) {
-				tileArray[tile.id] = (
-					prefab: PrefabHelper.Load(tile.type, context),
-					texture: texture ?? LoadTexture(tile.image, transparent, context),
-					shapes: tile.shapes
+			// Image collection tilesets each have their own texture and transparency color.
+			foreach (var tile in tsx.tiles) {
+				tiles[tile.id] = (
+					PrefabHelper.Load(tile.type, context),
+					texture ?? LoadTexture(tile.image.source, tile.image.trans, context),
+					tile.objects
 				);
 			}
 
 			// Tiles
+			var tileset = ScriptableObject.CreateInstance<Tileset>();
+			tileset.name = (string)document.Attribute("name");
 			tileset.tiles = new Tileset.Tile[tilecount];
-			var pivot = Vector2.one * 0.5f - tileoffset / new Vector2(tilewidth, tileheight);
+			var pivot = Vector2.one * 0.5f - new Vector2(tsx.tileoffset.x, tsx.tileoffset.y) / new Vector2(tsx.tilewidth, tsx.tileheight);
+			var spacing = new Vector4(tsx.tilewidth + tsx.spacing, tsx.tileheight + tsx.spacing, tsx.tilewidth, tsx.tileheight);
+			var margin = new Vector4(tsx.margin, (texture?.height ?? 0) - rows * tsx.tileheight - rows * tsx.spacing, 0, 0);
 			for (var i = 0; i < tileset.tiles.Length; ++i) {
-				var rows = tilecount / columns;
-				var tileSpacing = new Vector4(tilewidth + spacing, tileheight + spacing, tilewidth, tileheight);
-				var tileMargin = new Vector4(margin, margin, 0, 0);
-				var position = new Vector4(i % columns, rows - i / columns - 1, 1, 1);
-				var rect = Vector4.Scale(position, tileSpacing) + tileMargin;
-				var tileTexture = tileArray[i].texture;
-				tileset.tiles[i].prefab = tileArray[i].prefab;
+				var tileTexture = tiles[i].texture;
+				var position = new Vector4(
+					texture ? i % columns : 0,
+					texture ? rows - i / columns - 1 : 0,
+					1, 1
+				);
+				var rect = texture
+					? Vector4.Scale(position, spacing) + margin
+					: new Vector4(0, 0, tileTexture?.width ?? 0, tileTexture?.height ?? 0);
+				tileset.tiles[i].prefab = tiles[i].prefab;
 				tileset.tiles[i].texture = tileTexture;
 				tileset.tiles[i].pivot = pivot;
-				if (string.IsNullOrEmpty(imageSource)) { // Image collection
-					tileset.tiles[i].rect = new Rect(0, 0, tileTexture?.width ?? 0, tileTexture?.height ?? 0);
-				} else if (texture) {
-					tileset.tiles[i].rect = new Rect(rect.x, rect.y + (tileTexture.height - rows * tileheight - rows * spacing - tileMargin.x), rect.z, rect.w);
-				} else {
-					continue;
-				}
-				var shapes = tileArray[i].shapes;
-				if (shapes != null) {
-					tileset.tiles[i].shapes = new Vector2[shapes.Length][];
-					for (var j = 0; j < shapes.Length; ++j) {
-						var obj = shapes[j];
+				tileset.tiles[i].rect = new Rect(rect.x, rect.y, rect.z, rect.w);
+				// Collision shapes
+				var objects = tiles[i].objects;
+				if (objects != null) {
+					tileset.tiles[i].objects = new Tileset.Tile.Object[objects.Length];
+					for (var j = 0; j < tileset.tiles[i].objects.Length; ++j) {
+						var obj = objects[j];
 						// Rectangle shape
 						if (obj.width > 0 && obj.height > 0) {
-							tileset.tiles[i].shapes[j] = new [] {
-								new Vector2(obj.x, rect.w - obj.y),
-								new Vector2(obj.x, rect.w - obj.y - obj.height),
-								new Vector2(obj.x + obj.width, rect.w - obj.y - obj.height),
-								new Vector2(obj.x + obj.width, rect.w - obj.y)
+							tileset.tiles[i].objects[j] = new Tileset.Tile.Object {
+								points = new [] {
+									new Vector2(obj.x, rect.w - obj.y),
+									new Vector2(obj.x, rect.w - obj.y - obj.height),
+									new Vector2(obj.x + obj.width, rect.w - obj.y - obj.height),
+									new Vector2(obj.x + obj.width, rect.w - obj.y)
+								}
 							};
 						// Polygon shape
 						} else if (obj.points != null) {
 							var points = obj.points.Split(' ');
-							tileset.tiles[i].shapes[j] = new Vector2[points.Length];
+							tileset.tiles[i].objects[j] = new Tileset.Tile.Object {
+								points = new Vector2[points.Length]
+							};
 							for (var k = 0; k < points.Length; ++k) {
 								var point = points[k].Split(',');
 								var x = float.Parse(point[0]);
 								var y = float.Parse(point[1]);
-								tileset.tiles[i].shapes[j][k] =
+								tileset.tiles[i].objects[j].points[k] =
 									new Vector2(obj.x + x, rect.w - obj.y - y);
 							}
 						}
@@ -117,15 +101,16 @@ namespace KITTY {
 				}
 			}
 
+			context.AddObjectToAsset($"tileset_{tileset.name}", tileset);
 			return tileset;
 		}
 
 		///<summary>Construct a tileset from Tiled by instantiating one tile per texture sprite.</summary>
 		public override void OnImportAsset(AssetImportContext context) {
-			tileset = Load(context, XDocument.Load(assetPath).Element("tileset"));
+			Load(context, XDocument.Load(assetPath).Element("tileset"));
 		}
 
-		static Texture2D LoadTexture(string filename, Color transparent, AssetImportContext context) {
+		static Texture2D LoadTexture(string filename, string trans, AssetImportContext context) {
 			var imageAssetPath = Path.GetFullPath(
 				Path.GetDirectoryName(context.assetPath)
 				+ Path.DirectorySeparatorChar
@@ -135,57 +120,23 @@ namespace KITTY {
 			);
 			imageAssetPath = "Assets" + imageAssetPath.Substring(Application.dataPath.Length);
 			var texture = AssetDatabase.LoadMainAssetAtPath(imageAssetPath) as Texture2D;
-			if (texture) {
-				if (transparent != Color.clear) {
-					var transparentTexture = new Texture2D(texture.width, texture.height, TextureFormat.ARGB32, false) { filterMode = texture.filterMode };
-					var colors = texture.GetPixels();
-					for (var i = 0; i < colors.Length; ++i) {
-						colors[i] = colors[i] == transparent ? Color.clear : colors[i];
-					}
-					transparentTexture.SetPixels(colors);
-					transparentTexture.name = $"texture_{filename}";
-					context.AddObjectToAsset($"texture_{filename}", transparentTexture);
-					texture = transparentTexture;
-				}
-				context.DependsOnSourceAsset(imageAssetPath);
-			} else {
+			if (!texture) {
 				throw new FileNotFoundException($"could not load texture \"{imageAssetPath}\" ({filename}) of tileset \"{context.assetPath}\".");
 			}
+			if (trans != null) {
+				ColorUtility.TryParseHtmlString($"#{trans}".Substring(trans.Length - 6), out var transparent);
+				var transparentTexture = new Texture2D(texture.width, texture.height, TextureFormat.ARGB32, mipChain: false) {
+					filterMode = texture.filterMode
+				};
+				var colors = texture.GetPixels();
+				colors = colors.Select(c => c == transparent ? Color.clear : c).ToArray();
+				transparentTexture.SetPixels(colors);
+				transparentTexture.name = $"texture_{filename}";
+				context.AddObjectToAsset($"texture_{filename}", transparentTexture);
+				texture = transparentTexture;
+			}
+			context.DependsOnSourceAsset(imageAssetPath);
 			return texture;
-		}
-
-		static (int id, string type, string image, Shape[] shapes) LoadTile(XElement element) {
-			return (
-				id: (int)element.Attribute("id"),
-				type: (string)element.Attribute("type"),
-				image: (string)element.Element("image")?.Attribute("source"),
-				shapes: element
-					.Element("objectgroup")?
-					.Elements("object")
-					.Select(o => new Shape {
-						id = (uint)o.Attribute("id"),
-						name = (string)o.Attribute("name"),
-						type = (string)o.Attribute("type"),
-						x = (float)o.Attribute("x"),
-						y = (float)o.Attribute("y"),
-						width = (float?)o.Attribute("width") ?? 0,
-						height = (float?)o.Attribute("height") ?? 0,
-						rotation = (float?)o.Attribute("rotation") ?? 0,
-						points = (string)o.Element("polygon")?.Attribute("points"),
-					}).ToArray()
-			);
-		}
-
-		struct Shape {
-			public uint id;
-			public string name;
-			public string type;
-			public float x;
-			public float y;
-			public float width;
-			public float height;
-			public float rotation;
-			public string points;
 		}
 	}
 }

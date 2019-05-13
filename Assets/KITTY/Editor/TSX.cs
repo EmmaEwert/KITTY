@@ -1,0 +1,102 @@
+namespace KITTY {
+	using System.Linq;
+	using System.Xml.Linq;
+
+	internal struct TSX {
+		// Attributes
+		public string name;
+		public int tilewidth;
+		public int tileheight;
+		public int spacing;
+		public int margin;
+		public int tilecount;
+		public int columns;
+
+		// Elements
+		public Tileoffset tileoffset;
+		public Image image;
+		public Tile[] tiles;
+
+		public TSX(XElement element) {
+			// Attributes
+			name        = (string )element.Attribute("name");
+			tilewidth   = (int    )element.Attribute("tilewidth");
+			tileheight  = (int    )element.Attribute("tileheight");
+			spacing     = (int?   )element.Attribute("spacing") ?? 0;
+			margin      = (int?   )element.Attribute("margin") ?? 0;
+			tilecount   = (int?   )element.Attribute("tilecount") ?? 0;
+			columns     = (int?   )element.Attribute("columns") ?? 0;
+
+			// Elements
+			tileoffset = new Tileoffset(element.Element("tileoffset"));
+			image = new Image(element.Element("image"));
+			tiles = element
+				.Elements("tile")
+				.Select(t => new Tile(t))
+				.OrderBy(t => t.id)
+				.ToArray();
+		}
+
+		public struct Tileoffset {
+			public int x;
+			public int y;
+
+			public Tileoffset(XElement element) {
+				x = (int?)element?.Attribute("x") ?? 0;
+				y = (int?)element?.Attribute("y") ?? 0;
+			}
+		}
+
+		public struct Image {
+			public string source;
+			public string trans;
+
+			public Image(XElement element) {
+				source = (string)element?.Attribute("source");
+				trans  = (string)element?.Attribute("trans");
+			}
+		}
+
+		public struct Tile {
+			public int id;
+			public string type;
+			public Image image;
+			public Object[] objects;
+
+			public Tile(XElement element) {
+				id = (int)element.Attribute("id");
+				type = (string)element.Attribute("type");
+				image = new Image(element.Element("image"));
+				objects = element
+					.Element("objectgroup")?
+					.Elements("object")
+					.Select(@object => new Object(@object))
+					.ToArray();
+			}
+
+			public struct Object {
+				public int id;
+				public string name;
+				public string type;
+				public float x;
+				public float y;
+				public float width;
+				public float height;
+				public float rotation;
+				public string points;
+
+				public Object(XElement element) {
+					id = (int)element.Attribute("id");
+					name = (string)element.Attribute("name");
+					type = (string)element.Attribute("type");
+					x = (float)element.Attribute("x");
+					y = (float)element.Attribute("y");
+					width = (float?)element.Attribute("width") ?? 0;
+					height = (float?)element.Attribute("height") ?? 0;
+					rotation = (float?)element.Attribute("rotation") ?? 0;
+					points = (string)element.Element("polygon")?.Attribute("points");
+				}
+			}
+		}
+	}
+}

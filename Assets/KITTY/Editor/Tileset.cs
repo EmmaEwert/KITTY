@@ -3,19 +3,18 @@ namespace KITTY {
 	using System.Linq;
 	using UnityEngine;
 
-	///<summary>Asset based on Tiled tileset.</summary>
+	///<summary>Asset based on a Tiled tileset.</summary>
 	internal class Tileset : ScriptableObject {
 		public Tile[] tiles;
 
-		///<summary>Representation of a single tile in a Tiled tileset.</summary>
+		///<summary>Asset based on a single tile in a Tiled tileset.</summary>
 		[Serializable]
 		public struct Tile {
 			public Texture2D texture;
 			public Rect rect;
 			public Vector2 pivot;
 			public GameObject prefab;
-			[NonSerialized] public Vector2[][] shapes;
-			[HideInInspector, SerializeField] Shape[] _shapes;
+			[HideInInspector] public Object[] objects;
 
 			public UnityEngine.Tilemaps.Tile Instantiate(float pixelsPerUnit) {
 				var tile = ScriptableObject.CreateInstance<UnityEngine.Tilemaps.Tile>();
@@ -31,8 +30,8 @@ namespace KITTY {
 				);
 				tile.sprite.hideFlags = HideFlags.HideInHierarchy;
 				tile.sprite.name = "Sprite";
-				if (shapes?.Length > 0) {
-					tile.sprite.OverridePhysicsShape(shapes.ToList());
+				if (objects?.Length > 0) {
+					tile.sprite.OverridePhysicsShape(objects.Select(s => s.points).ToList());
 				}
 
 				if (tile.sprite.GetPhysicsShapeCount() > 0) {
@@ -45,26 +44,12 @@ namespace KITTY {
 				tile.gameObject = prefab;
 				tile.hideFlags = HideFlags.HideInHierarchy;
 				tile.name = "Tile";
-				//tile.sprite = sprite;
 				tile.transform = Matrix4x4.identity;
 				return tile;
 			}
 
-			public void OnAfterDeserialize() {
-				if (_shapes == null) { return; }
-				shapes = new Vector2[_shapes.Length][];
-				for (var i = 0; i < _shapes.Length; ++i) {
-					shapes[i] = _shapes[i].points;
-				}
-			}
-
-			public void OnBeforeSerialize() {
-				if (shapes == null) { return; }
-				_shapes = shapes.Select(s => new Shape { points = s }).ToArray();
-			}
-
 			[Serializable]
-			struct Shape {
+			public struct Object {
 				public Vector2[] points;
 			}
 		}
