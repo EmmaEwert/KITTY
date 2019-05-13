@@ -144,14 +144,15 @@ namespace KITTY {
 					var objects = layer.Elements("object").ToArray();
 					foreach (var obj in objects) {
 						// Attributes
-						var objectID     =    (int)obj.Attribute("id");
-						var objectName   = (string)obj.Attribute("name");
-						var objectType   = (string)obj.Attribute("type");
-						var objectGID    =  (uint?)obj.Attribute("gid") ?? 0;
-						var objectX      =  (float)obj.Attribute("x") / tileheight;
-						var objectY      = -(float)obj.Attribute("y") / tileheight + height;
-						var objectWidth  = (float?)obj.Attribute("width") ?? 0;
-						var objectHeight = (float?)obj.Attribute("height") ?? 0;
+						var objectID       =    (int)obj.Attribute("id");
+						var objectName     = (string)obj.Attribute("name");
+						var objectType     = (string)obj.Attribute("type");
+						var objectGID      =  (uint?)obj.Attribute("gid") ?? 0;
+						var objectX        =  (float)obj.Attribute("x") / tileheight;
+						var objectY        = -(float)obj.Attribute("y") / tileheight + height;
+						var objectWidth    = (float?)obj.Attribute("width") ?? 0;
+						var objectHeight   = (float?)obj.Attribute("height") ?? 0;
+						var objectRotation = (float?)obj.Attribute("rotation") ?? 0;
 
 						// Elements
 						var objPropElems = obj.Element("properties")?.Elements("property");
@@ -215,6 +216,9 @@ namespace KITTY {
 							renderer.transform.SetParent(gameObject.transform, worldPositionStays: false);
 							renderer.sprite = sprite;
 							renderer.sortingOrder = i;
+							renderer.drawMode = SpriteDrawMode.Sliced;
+							renderer.size = new Vector2(objectWidth, objectHeight) / tilewidth;
+							gameObject.transform.localRotation = Quaternion.Euler(0f, 0f, -objectRotation);
 						} else {
 							gameObject.transform.localPosition =
 								new Vector3(objectX, objectY - (float)objectHeight / tileheight, 0);
