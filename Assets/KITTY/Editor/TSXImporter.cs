@@ -122,6 +122,17 @@ namespace KITTY {
 			}
 			if (trans != null) {
 				ColorUtility.TryParseHtmlString($"#{trans}".Substring(trans.Length - 6), out var transparent);
+				if (!texture.isReadable) {
+					var renderTexture = RenderTexture.GetTemporary(texture.width, texture.height, depthBuffer: 0, RenderTextureFormat.Default, RenderTextureReadWrite.Linear);
+					Graphics.Blit(texture, renderTexture);
+					var previousRenderTexture = RenderTexture.active;
+					RenderTexture.active = renderTexture;
+					texture = new Texture2D(texture.width, texture.height) { filterMode = texture.filterMode };
+					texture.ReadPixels(new Rect(0, 0, renderTexture.width, renderTexture.height), 0, 0);
+					texture.Apply();
+					RenderTexture.active = previousRenderTexture;
+					RenderTexture.ReleaseTemporary(renderTexture);
+				}
 				var transparentTexture = new Texture2D(texture.width, texture.height, TextureFormat.ARGB32, mipChain: false) {
 					filterMode = texture.filterMode
 				};
