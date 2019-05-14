@@ -31,7 +31,7 @@ namespace KITTY {
 			}
 
 			// Single-image tilesets all use the same texture.
-			var tiles = new (GameObject prefab, Texture2D texture, TSX.Tile.Object[] objects)[tilecount];
+			var tiles = new (GameObject prefab, Texture2D texture, TSX.Tile.Object[] objects, TSX.Tile.Frame[] frames)[tilecount];
 			for (var i = 0; i < tiles.Length; ++i) {
 				tiles[i].texture = texture;
 			}
@@ -41,7 +41,8 @@ namespace KITTY {
 				tiles[tile.id] = (
 					PrefabHelper.Load(tile.type, context),
 					texture ?? LoadTexture(tile.image.source, tile.image.trans, context),
-					tile.objects
+					tile.objects,
+					tile.frames
 				);
 			}
 
@@ -62,6 +63,19 @@ namespace KITTY {
 					texture ? tsx.tileheight : tileTexture?.height ?? 0
 				);
 				tileset.tiles[i].objects = ParseObjects(tiles[i].objects, tileset.tiles[i].rect.height);
+				tileset.tiles[i].frames = new Tileset.Tile.Frame[tiles[i].frames?.Length ?? 0];
+				for (var j = 0; j < tileset.tiles[i].frames.Length; ++j) {
+					// TODO: Support image collection tileset animated tiles
+					tileset.tiles[i].frames[j] = new Tileset.Tile.Frame {
+						rect = new Rect(
+							(tsx.tilewidth + tsx.spacing) * (tiles[i].frames[j].tileid % columns) + tsx.margin,
+							(tsx.tileheight + tsx.spacing) * (rows - tiles[i].frames[j].tileid / columns - 1) + texture.height - rows * tsx.tileheight - rows * tsx.spacing - tsx.margin + tsx.spacing,
+							tsx.tilewidth,
+							tsx.tileheight
+						),
+						duration = tiles[i].frames[j].duration,
+					};
+				}
 			}
 
 			context.AddObjectToAsset($"tileset_{tileset.name}", tileset);

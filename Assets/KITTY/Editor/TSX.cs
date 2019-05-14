@@ -80,15 +80,21 @@ namespace KITTY {
 			public string type;
 			public Image image;
 			public Object[] objects;
+			public Frame[] frames;
 
 			public Tile(XElement element) {
 				id = (int)element.Attribute("id");
 				type = (string)element.Attribute("type");
 				image = new Image(element.Element("image"));
 				objects = element
-					.Element("objectgroup")?
-					.Elements("object")
+					.Element("objectgroup")
+					?.Elements("object")
 					.Select(@object => new Object(@object))
+					.ToArray();
+				frames = element
+					.Element("animation")
+					?.Elements("frame")
+					.Select(frame => new Frame(frame))
 					.ToArray();
 			}
 
@@ -104,15 +110,25 @@ namespace KITTY {
 				public string points;
 
 				public Object(XElement element) {
-					id = (int)element.Attribute("id");
-					name = (string)element.Attribute("name");
-					type = (string)element.Attribute("type");
-					x = (float)element.Attribute("x");
-					y = (float)element.Attribute("y");
-					width = (float?)element.Attribute("width") ?? 0;
-					height = (float?)element.Attribute("height") ?? 0;
+					id       = (int   )element.Attribute("id");
+					name     = (string)element.Attribute("name");
+					type     = (string)element.Attribute("type");
+					x        = (float )element.Attribute("x");
+					y        = (float )element.Attribute("y");
+					width    = (float?)element.Attribute("width") ?? 0;
+					height   = (float?)element.Attribute("height") ?? 0;
 					rotation = (float?)element.Attribute("rotation") ?? 0;
-					points = (string)element.Element("polygon")?.Attribute("points");
+					points   = (string)element.Element("polygon")?.Attribute("points");
+				}
+			}
+
+			public struct Frame {
+				public int tileid;
+				public int duration;
+
+				public Frame(XElement element) {
+					tileid   = (int?)element?.Attribute("tileid") ?? 0;
+					duration = (int?)element?.Attribute("duration") ?? 0;
 				}
 			}
 		}

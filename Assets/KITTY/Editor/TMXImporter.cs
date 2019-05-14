@@ -64,6 +64,9 @@ namespace KITTY {
 					tilesetTiles[i] = tileset.tiles[i].Instantiate(tmx.tilewidth);
 					context.AddObjectToAsset($"tile{i + tsx.firstgid:0000}", tilesetTiles[i]);
 					context.AddObjectToAsset($"sprite{i + tsx.firstgid:0000}", tilesetTiles[i].sprite);
+					for (var j = 0; j < tilesetTiles[i].sprites.Length; ++j) {
+						context.AddObjectToAsset($"frame{i + tsx.firstgid:0000}:{j}", tilesetTiles[i].sprites[j]);
+					}
 				}
 				ArrayUtility.AddRange(ref tiles, tilesetTiles);
 			}
