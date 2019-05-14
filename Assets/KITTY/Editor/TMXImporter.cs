@@ -109,7 +109,7 @@ namespace KITTY {
 					);
 					tilemap.transform.localScale = layout == GridLayout.CellLayout.Hexagon ? new Vector3(1f, -1f, 1f) : Vector3.one;
 					tilemap.SetTilesBlock(bounds, layerTiles);
-					renderer.sortOrder = layout == GridLayout.CellLayout.Hexagon ? TilemapRenderer.SortOrder.BottomLeft : TilemapRenderer.SortOrder.TopRight;
+					renderer.sortOrder = layout == GridLayout.CellLayout.Hexagon ? TilemapRenderer.SortOrder.BottomLeft : TilemapRenderer.SortOrder.TopLeft;
 					renderer.sortingOrder = i;
 
 					// Flipped tiles
@@ -147,7 +147,6 @@ namespace KITTY {
 							var gameObjectName = string.IsNullOrEmpty(@object.name) ? @object.type : @object.name;
 							gameObject = new GameObject($"{gameObjectName} {@object.id}".Trim());
 							icon = "sv_label_6";
-							Debug.LogWarning($"No prefab named \"{@object.type}\" could be found, skipping.");
 
 						// Prefab instantiation based on object type
 						} else {
@@ -220,7 +219,7 @@ namespace KITTY {
 					case "System.Boolean": fieldType = "bool";   break;
 				}
 				foreach (var property in properties) {
-					if (property.name.ToLower() == fieldName && property.type == fieldType) {
+					if (property.name.ToLower().Replace(" ", "") == fieldName && property.type == fieldType) {
 						switch (property.type) {
 							case "string": field.SetValue(component,             property.value);  break;
 							case "int":    field.SetValue(component,   int.Parse(property.value)); break;

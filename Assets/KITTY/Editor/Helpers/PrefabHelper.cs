@@ -28,6 +28,8 @@
             cache.Add(name, asset?.prefab);
 			if (!string.IsNullOrEmpty(asset?.path)) {
 				context?.DependsOnSourceAsset(asset.path);
+			} else {
+				Debug.LogWarning($"No prefab named \"{name}\" could be found, skipping.");
 			}
             return asset?.prefab;
         }

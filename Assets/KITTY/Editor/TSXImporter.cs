@@ -24,8 +24,8 @@ namespace KITTY {
 			} else {
 				texture = LoadTexture(tsx.image.source, tsx.image.trans, context);
 				// Column count might not exist, so just compute it instead.
-				columns = texture.width / tsx.tilewidth;
-				rows = texture.height / tsx.tileheight;
+				columns = (texture.width - tsx.margin) / (tsx.tilewidth + tsx.spacing);
+				rows = (texture.height - tsx.margin) / (tsx.tileheight + tsx.spacing);
 				// Tile count depends only on column and row count.
 				tilecount = columns * rows;
 			}
@@ -57,7 +57,7 @@ namespace KITTY {
 				tileset.tiles[i].pivot = pivot;
 				tileset.tiles[i].rect = new Rect(
 					texture ? (tsx.tilewidth + tsx.spacing) * (i % columns) + tsx.margin: 0,
-					texture ? (tsx.tileheight + tsx.spacing) * (rows - i / columns - 1) + texture.height - rows * tsx.tileheight - rows * tsx.spacing : 0,
+					texture ? (tsx.tileheight + tsx.spacing) * (rows - i / columns - 1) + texture.height - rows * tsx.tileheight - rows * tsx.spacing - tsx.margin + tsx.spacing: 0,
 					texture ? tsx.tilewidth : tileTexture?.width ?? 0,
 					texture ? tsx.tileheight : tileTexture?.height ?? 0
 				);
