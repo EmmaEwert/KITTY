@@ -58,7 +58,7 @@ namespace KITTY {
 				visible = ((int? )element.Attribute("visible") ?? 1) == 1;
 				offsetx = (float?)element.Attribute("offsetx") ?? 0;
 				offsety = (float?)element.Attribute("offsety") ?? 0;
-				data = new Data(element.Element("data"));
+				data = new Data(element.Element("data"), width, height);
 				objects = element
 					.Elements("object")
 					.Select(o => new Object(o))
@@ -68,12 +68,40 @@ namespace KITTY {
 			public struct Data {
 				public string encoding;
 				public string compression;
-				public string value;
+				public Chunk[] chunks;
 
-				public Data(XElement element) {
-					encoding = (string)element?.Attribute("encoding");
+				public Data(XElement element, int width, int height) {
+					encoding    = (string)element?.Attribute("encoding");
 					compression = (string)element?.Attribute("compression");
-					value = element?.Value;
+					chunks = element
+						?.Elements("chunk")
+						.Select(c => new Chunk(c))
+						.ToArray();
+					if (chunks?.Length == 0 && element != null) {
+						chunks = new [] { new Chunk {
+							x = 0,
+							y = 0,
+							width = width,
+							height = height,
+							value = element?.Value
+						}};
+					}
+				}
+
+				public struct Chunk {
+					public int x;
+					public int y;
+					public int width;
+					public int height;
+					public string value;
+
+					public Chunk(XElement element) {
+						x      = (int)element.Attribute("x");
+						y      = (int)element.Attribute("y");
+						width  = (int)element.Attribute("width");
+						height = (int)element.Attribute("height");
+						value = element.Value;
+					}
 				}
 			}
 

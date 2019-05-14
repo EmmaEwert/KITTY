@@ -18,29 +18,32 @@ namespace KITTY {
 			var assetPathPrefix = Path.GetDirectoryName(assetPath) + Path.DirectorySeparatorChar;
 			// TODO: Support ../source.tsx
 			var tmx = new TMX(XDocument.Load(assetPath).Element("map"), assetPathPrefix);
-			if (tmx.infinite) {
-				throw new NotImplementedException("Infinite: " + tmx.infinite);
-			}
+			// if (tmx.infinite) {
+				//throw new NotImplementedException("Infinite: " + tmx.infinite);
+			// }
 			var layout = tmx.orientation == "orthogonal"
 				? GridLayout.CellLayout.Rectangle
 				: tmx.orientation == "isometric"
 					? GridLayout.CellLayout.Isometric
 					: GridLayout.CellLayout.Hexagon;
 
-			var gids = new uint[tmx.layers.Length][];
+			var gids = new uint[tmx.layers.Length][][];
 			var gidSet = new HashSet<uint>();
 			// TODO: & 0x1fffffff the gidSet values from tile gids[]
 			for (var i = 0; i < tmx.layers.Length; ++i) {
 				var layer = tmx.layers[i];
-				if (layer.data.value != null) { // Tile layer
-					gids[i] = ParseGIDs(
-						layer.data.encoding,
-						layer.data.compression,
-						layer.data.value,
-						layer.width,
-						layout
-					);
-					gidSet.UnionWith(gids[i]);
+				if (layer.data.chunks != null) { // Tile layer
+					gids[i] = new uint[layer.data.chunks.Length][];
+					for (var j = 0; j < gids[i].Length; ++j) {
+						gids[i][j] = ParseGIDs(
+							layer.data.encoding,
+							layer.data.compression,
+							layer.data.chunks[j].value,
+							layer.width,
+							layout
+						);
+						gidSet.UnionWith(gids[i][j]);
+					}
 				} else { // Object layer
 					foreach (var @object in layer.objects) {
 						gidSet.Add(@object.gid & 0x1fffffff);
@@ -91,15 +94,8 @@ namespace KITTY {
 				layerObject.isStatic = true;
 
 				// Tile layer
-				if (layer.data.value != null) {
+				if (layer.data.chunks != null) {
 					// Tilemap
-					var layerTiles = new Tile[gids[i].Length];
-					for (var j = 0; j < layerTiles.Length; ++j) {
-						layerTiles[j] = tiles[gids[i][j] & 0x1ffffff]; // 3 MSB are for flipping
-					}
-
-					var size = new Vector3Int(layer.width, layer.height, 1);
-					var bounds = new BoundsInt(Vector3Int.zero, size);
 					var tilemap = layerObject.AddComponent<Tilemap>();
 					var renderer = layerObject.AddComponent<TilemapRenderer>();
 					layerObject.AddComponent<TilemapCollider2D>().usedByComposite = true;
@@ -111,26 +107,47 @@ namespace KITTY {
 						Vector3.one
 					);
 					tilemap.transform.localScale = layout == GridLayout.CellLayout.Hexagon ? new Vector3(1f, -1f, 1f) : Vector3.one;
-					tilemap.SetTilesBlock(bounds, layerTiles);
-					renderer.sortOrder = layout == GridLayout.CellLayout.Hexagon ? TilemapRenderer.SortOrder.BottomLeft : TilemapRenderer.SortOrder.TopLeft;
-					renderer.sortingOrder = i;
+					// Chunks
+					for (var j = 0; j < layer.data.chunks.Length; ++j) {
+						var layerTiles = new Tile[gids[i][j].Length];
+						for (var k = 0; k < layerTiles.Length; ++k) {
+							layerTiles[k] = tiles[gids[i][j][k] & 0x1ffffff]; // 3 MSB are for flipping
+						}
+						var size = new Vector3Int(layer.data.chunks[j].width, layer.data.chunks[j].height, 1);
+						var bounds = new BoundsInt(
+							new Vector3Int(
+								layer.width - layer.data.chunks[j].width + layer.data.chunks[j].x,
+								layer.height - layer.data.chunks[j].height - layer.data.chunks[j].y,
+								0
+							),
+						size);
+						tilemap.SetTilesBlock(bounds, layerTiles);
 
-					// Flipped tiles
-					for (var j = 0; j < gids[i].Length; ++j) {
-						var diagonal   = (gids[i][j] >> 29) & 1;
-						var vertical   = (gids[i][j] >> 30) & 1;
-						var horizontal = (gids[i][j] >> 31) & 1;
-						var flips = new Vector4(diagonal, vertical, horizontal, 0);
-						if (flips.sqrMagnitude > 0f) {
-							var position = new Vector3Int(j % tmx.width, j / tmx.width, 0);
-							var transform = Matrix4x4.TRS(
-								Vector3.zero,
-								Quaternion.AngleAxis(diagonal * 180, new Vector3(1, 1, 0)),
-								Vector3.one - (diagonal == 1 ? new Vector3(flips.y, flips.z, flips.w) : new Vector3(flips.z, flips.y, flips.w)) * 2
-							);
-							tilemap.SetTransformMatrix(position, transform);
+						// Flipped tiles
+						for (var k = 0; k < gids[i][j].Length; ++k) {
+							var diagonal   = (gids[i][j][k] >> 29) & 1;
+							var vertical   = (gids[i][j][k] >> 30) & 1;
+							var horizontal = (gids[i][j][k] >> 31) & 1;
+							var flips = new Vector4(diagonal, vertical, horizontal, 0);
+							if (flips.sqrMagnitude > 0f) {
+								var position = new Vector3Int(
+									layer.width - layer.data.chunks[j].width + k % layer.data.chunks[j].width,
+									layer.height - layer.data.chunks[j].height + k / layer.data.chunks[j].width,
+									0
+								);
+								var transform = Matrix4x4.TRS(
+									Vector3.zero,
+									Quaternion.AngleAxis(diagonal * 180, new Vector3(1, 1, 0)),
+									Vector3.one - (diagonal == 1 ? new Vector3(flips.y, flips.z, flips.w) : new Vector3(flips.z, flips.y, flips.w)) * 2
+								);
+								tilemap.SetTransformMatrix(position, transform);
+							}
 						}
 					}
+
+
+					renderer.sortOrder = layout == GridLayout.CellLayout.Hexagon ? TilemapRenderer.SortOrder.BottomLeft : TilemapRenderer.SortOrder.TopLeft;
+					renderer.sortingOrder = i;
 
 				// Object layer
 				} else {
