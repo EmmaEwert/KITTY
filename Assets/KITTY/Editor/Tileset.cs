@@ -51,6 +51,7 @@ namespace KITTY {
 							border: Vector4.zero,
 							generateFallbackPhysicsShape: false
 						);
+						sprites[i].hideFlags = HideFlags.HideInHierarchy;
 					}
 					var duration = GreatestCommonDivisor(frames.Select(f => f.duration).ToArray());
 					var tileSprites = new List<Sprite>();
