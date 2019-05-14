@@ -154,13 +154,22 @@ namespace KITTY {
 							gameObject = PrefabUtility.InstantiatePrefab(gameObject) as GameObject;
 							gameObject.name = $"{@object.name} {@object.id}".Trim();
 							foreach (var component in gameObject.GetComponentsInChildren<MonoBehaviour>()) {
-								foreach (var field in component.GetType().GetFields(BindingFlags.Public | BindingFlags.NonPublic)) {
+								foreach (var field in component.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
 									var attribute = field.GetCustomAttribute<TiledPropertyAttribute>();
 									if (attribute == null) { continue; }
+									Debug.Log($"Found attribute on {field.Name}");
 									var fieldName = attribute.name ?? field.Name.ToLower();
-									var fieldType = field.FieldType.ToString().ToLower();
+									var fieldType = field.FieldType.ToString();
+									switch (fieldType) {
+										case "System.Int32": fieldType = "int"; break;
+										case "System.Single": fieldType = "float"; break;
+										case "System.String": fieldType = "string"; break;
+										case "System.Boolean": fieldType = "bool"; break;
+									}
 									foreach (var prop in @object.properties) {
+										Debug.Log($"Checking property {prop.name} == {fieldName} && {prop.type} == {fieldType}");
 										if (prop.name.ToLower() == fieldName && prop.type == fieldType) {
+											Debug.Log($"Found property {prop.name}");
 											switch (prop.type) {
 												case "string": field.SetValue(component, prop.value); break;
 												case "int": field.SetValue(component, int.Parse(prop.value)); break;
