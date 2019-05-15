@@ -185,7 +185,9 @@ namespace KITTY {
 							var diagonal   = ((@object.gid >> 29) & 1) == 1 ? true : false;
 							var vertical   = ((@object.gid >> 30) & 1) == 1 ? true : false;
 							var horizontal = ((@object.gid >> 31) & 1) == 1 ? true : false;
-							gameObject.transform.localPosition = new Vector3(@object.x / tmx.tileheight, -@object.y / tmx.tileheight + tmx.height, 0);
+							var position = new Vector3(@object.x / tmx.tilewidth, -@object.y / tmx.tileheight + tmx.height, 0);
+							gameObject.transform.localPosition = position;
+							gameObject.transform.localRotation = Quaternion.Euler(0f, 0f, -@object.rotation);
 							var renderer = new GameObject("Renderer").AddComponent<SpriteRenderer>();
 							renderer.transform.SetParent(gameObject.transform, worldPositionStays: false);
 							renderer.sprite = sprite;
@@ -195,7 +197,7 @@ namespace KITTY {
 							renderer.flipX = horizontal;
 							renderer.flipY = vertical;
 							renderer.color = new Color(1f, 1f, 1f, layer.opacity);
-							gameObject.transform.localRotation = Quaternion.Euler(0f, 0f, -@object.rotation);
+							renderer.transform.localPosition = new Vector3(@object.width / tmx.tilewidth / 2f, @object.height / tmx.tileheight / 2f);
 						} else {
 							gameObject.transform.localPosition =
 								new Vector3(@object.x / tmx.tileheight, -@object.y / tmx.tileheight + tmx.height - @object.height / tmx.tileheight, 0);
@@ -206,17 +208,6 @@ namespace KITTY {
 							InternalEditorGUIHelper.SetIconForObject(
 								gameObject,
 								EditorGUIUtility.IconContent(icon).image
-							);
-						}
-
-						// Align children to center of object
-						// TODO: Please don't maybe?
-						foreach (Transform child in gameObject.transform) {
-							var localPosition = new Vector2(@object.width, @object.height) / tmx.tilewidth / 2f;
-							child.localPosition = new Vector3(
-								localPosition.x,
-								localPosition.y,
-								child.localPosition.z
 							);
 						}
 					}
