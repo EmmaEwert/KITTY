@@ -185,17 +185,17 @@ namespace KITTY {
 							var diagonal   = ((@object.gid >> 29) & 1) == 1 ? true : false;
 							var vertical   = ((@object.gid >> 30) & 1) == 1 ? true : false;
 							var horizontal = ((@object.gid >> 31) & 1) == 1 ? true : false;
-							var position = new Vector3(@object.x / tmx.tilewidth, -@object.y / tmx.tileheight + tmx.height, 0);
-							gameObject.transform.localPosition = position;
-							gameObject.transform.localRotation = Quaternion.Euler(0f, 0f, -@object.rotation);
+							gameObject.transform.localRotation *= Quaternion.Euler(0f, 0f, -@object.rotation);
+							gameObject.transform.localRotation *= Quaternion.Euler(vertical ? 180f : 0f, horizontal ? 180f : 0f, 0f);
+							gameObject.transform.localPosition = new Vector3(@object.x / tmx.tilewidth, -@object.y / tmx.tileheight + tmx.height, 0);
+							gameObject.transform.localPosition += horizontal ? -gameObject.transform.right * @object.width / tmx.tilewidth : Vector3.zero;
+							gameObject.transform.localPosition += vertical ? -gameObject.transform.up * @object.height / tmx.tileheight : Vector3.zero;
 							var renderer = new GameObject("Renderer").AddComponent<SpriteRenderer>();
 							renderer.transform.SetParent(gameObject.transform, worldPositionStays: false);
 							renderer.sprite = sprite;
 							renderer.sortingOrder = i;
-							renderer.drawMode = SpriteDrawMode.Sliced;
+							renderer.drawMode = SpriteDrawMode.Sliced; // HACK: Makes renderer.size work
 							renderer.size = new Vector2(@object.width, @object.height) / tmx.tilewidth;
-							renderer.flipX = horizontal;
-							renderer.flipY = vertical;
 							renderer.color = new Color(1f, 1f, 1f, layer.opacity);
 							renderer.transform.localPosition = new Vector3(@object.width / tmx.tilewidth / 2f, @object.height / tmx.tileheight / 2f);
 						} else {
