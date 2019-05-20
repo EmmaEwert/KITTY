@@ -31,7 +31,7 @@ namespace KITTY {
 			}
 
 			// Single-image tilesets all use the same texture.
-			var tiles = new (GameObject prefab, Texture2D texture, TSX.Tile.Object[] objects, TSX.Tile.Frame[] frames, TSX.Tile.Property[] properties)[tilecount];
+			var tiles = new (GameObject prefab, Texture2D texture, TSX.Tile.Object[] objects, TSX.Tile.Frame[] frames, Property[] properties)[tilecount];
 			for (var i = 0; i < tiles.Length; ++i) {
 				tiles[i].texture = texture;
 			}
@@ -77,14 +77,7 @@ namespace KITTY {
 						duration = tiles[i].frames[j].duration,
 					};
 				}
-				tileset.tiles[i].properties = new Tileset.Tile.Property[tiles[i].properties?.Length ?? 0];
-				for (var j = 0; j < tileset.tiles[i].properties.Length; ++j) {
-					tileset.tiles[i].properties[j] = new Tileset.Tile.Property {
-						name = tiles[i].properties[j].name,
-						type = tiles[i].properties[j].type,
-						value = tiles[i].properties[j].value,
-					};
-				}
+				tileset.tiles[i].properties = tiles[i].properties ?? new Property[0];
 			}
 
 			context.AddObjectToAsset($"tileset_{tileset.name}", tileset);

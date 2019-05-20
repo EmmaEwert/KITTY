@@ -153,6 +153,7 @@ namespace KITTY {
 					var objects = layer.objects;//layer.Elements("object").ToArray();
 					foreach (var @object in objects) {
 						var tile = tiles[@object.gid & 0x1fffffff];
+						var properties = Property.Merge(@object.properties, tile?.properties ?? new Property[0]);
 						string icon = null;
 						GameObject gameObject; // Doubles as prefab when object has type
 
@@ -163,8 +164,7 @@ namespace KITTY {
 								gameObject.name = gameObject.name.Substring(0, gameObject.name.Length - 7);
 								gameObject.name += $" {@object.id}";
 								foreach (var component in gameObject.GetComponentsInChildren<MonoBehaviour>()) {
-									ApplyProperties(tile.properties, component);
-									ApplyProperties(@object.properties, component);
+									Property.Apply(properties, component);
 								}
 							// Default instantiation when object has no set type
 							} else {
@@ -173,6 +173,7 @@ namespace KITTY {
 							}
 
 						// Warn instantiation when object has type but no prefab was found
+						// TODO: Consider tile type
 						} else if (null == (gameObject = PrefabHelper.Load(@object.type, context))) {
 							var gameObjectName = string.IsNullOrEmpty(@object.name) ? @object.type : @object.name;
 							gameObject = new GameObject($"{gameObjectName} {@object.id}".Trim());
@@ -183,7 +184,7 @@ namespace KITTY {
 							gameObject = PrefabUtility.InstantiatePrefab(gameObject) as GameObject;
 							gameObject.name = $"{@object.name ?? @object.type} {@object.id}".Trim();
 							foreach (var component in gameObject.GetComponentsInChildren<MonoBehaviour>()) {
-								ApplyProperties(@object.properties, component);
+								Property.Apply(properties, component);
 							}
 						}
 
@@ -226,56 +227,6 @@ namespace KITTY {
 			}
 
 			collider.generationType = CompositeCollider2D.GenerationType.Synchronous;
-		}
-
-		void ApplyProperties(Tile.Property[] properties, MonoBehaviour component) {
-			foreach (var field in component.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
-				var attribute = field.GetCustomAttribute<TiledPropertyAttribute>();
-				if (attribute == null) { continue; }
-				var fieldName = attribute.name ?? field.Name.ToLower();
-				var fieldType = field.FieldType.ToString();
-				switch (fieldType) {
-					case "System.String":  fieldType = "string"; break;
-					case "System.Int32":   fieldType = "int";    break;
-					case "System.Single":  fieldType = "float";  break;
-					case "System.Boolean": fieldType = "bool";   break;
-				}
-				foreach (var property in properties) {
-					if (property.name.ToLower().Replace(" ", "") == fieldName && property.type == fieldType) {
-						switch (property.type) {
-							case "string": field.SetValue(component,             property.value);  break;
-							case "int":    field.SetValue(component,   int.Parse(property.value)); break;
-							case "float":  field.SetValue(component, float.Parse(property.value)); break;
-							case "bool":   field.SetValue(component,  bool.Parse(property.value)); break;
-						}
-					}
-				}
-			}
-		}
-
-		void ApplyProperties(TMX.Layer.Object.Property[] properties, MonoBehaviour component) {
-			foreach (var field in component.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
-				var attribute = field.GetCustomAttribute<TiledPropertyAttribute>();
-				if (attribute == null) { continue; }
-				var fieldName = attribute.name ?? field.Name.ToLower();
-				var fieldType = field.FieldType.ToString();
-				switch (fieldType) {
-					case "System.String":  fieldType = "string"; break;
-					case "System.Int32":   fieldType = "int";    break;
-					case "System.Single":  fieldType = "float";  break;
-					case "System.Boolean": fieldType = "bool";   break;
-				}
-				foreach (var property in properties) {
-					if (property.name.ToLower().Replace(" ", "") == fieldName && property.type == fieldType) {
-						switch (property.type) {
-							case "string": field.SetValue(component,             property.value);  break;
-							case "int":    field.SetValue(component,   int.Parse(property.value)); break;
-							case "float":  field.SetValue(component, float.Parse(property.value)); break;
-							case "bool":   field.SetValue(component,  bool.Parse(property.value)); break;
-						}
-					}
-				}
-			}
 		}
 
 		///<summary>Decode, decompress, and reorder rows of global tile IDs</summary>

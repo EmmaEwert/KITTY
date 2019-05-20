@@ -131,20 +131,12 @@ namespace KITTY {
 					properties = element
 						.Elements("properties")
 						?.Elements("property")
-						.Select(p => new Property(p))
+						.Select(p => new Property {
+							name = (string)p.Attribute("name"),
+							type = (string)p.Attribute("type") ?? "string",
+							value = (string)p.Attribute("value") ?? p.Value,
+						})
 						.ToArray();
-				}
-
-				public struct Property {
-					public string name;
-					public string type;
-					public string value;
-
-					public Property(XElement element) {
-						name = (string)element.Attribute("name");
-						type = (string)element.Attribute("type") ?? "string";
-						value = (string)element.Attribute("value") ?? element.Value;
-					}
 				}
 			}
 		}
