@@ -194,6 +194,7 @@ namespace KITTY {
 							renderer.transform.SetParent(gameObject.transform, worldPositionStays: false);
 							renderer.sprite = sprite;
 							renderer.sortingOrder = i;
+							renderer.spriteSortPoint = SpriteSortPoint.Pivot;
 							renderer.drawMode = SpriteDrawMode.Sliced; // HACK: Makes renderer.size work
 							renderer.size = new Vector2(@object.width, @object.height) / tmx.tilewidth;
 							renderer.color = new Color(1f, 1f, 1f, layer.opacity);
