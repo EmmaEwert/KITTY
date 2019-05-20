@@ -12,6 +12,7 @@ namespace KITTY {
 			if (gameObject) {
 				gameObject.name = gameObject.name.Substring(0, gameObject.name.Length - 7);
 				gameObject.name += $" {position.x},{position.y}";
+				gameObject.transform.localPosition -= new Vector3(0.5f, 0.5f);
 			}
 			return true;
 		}

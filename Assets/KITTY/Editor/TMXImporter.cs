@@ -156,10 +156,20 @@ namespace KITTY {
 						string icon = null;
 						GameObject gameObject; // Doubles as prefab when object has type
 
-						// Default instantiation when object has no set type
 						if (string.IsNullOrEmpty(@object.type)) {
-							gameObject = new GameObject($"{@object.name} {@object.id}".Trim());
-							icon = "sv_label_0";
+							// Tile object instantiation when object has no set type, but tile does
+							if (tile.gameObject) {
+								gameObject = Instantiate(tile.gameObject);
+								gameObject.name = gameObject.name.Substring(0, gameObject.name.Length - 7);
+								gameObject.name += $" {@object.id}";
+								foreach (var component in gameObject.GetComponentsInChildren<MonoBehaviour>()) {
+									ApplyProperties(@object.properties, component);
+								}
+							// Default instantiation when object has no set type
+							} else {
+								gameObject = new GameObject($"{@object.name} {@object.id}".Trim());
+								icon = "sv_label_0";
+							}
 
 						// Warn instantiation when object has type but no prefab was found
 						} else if (null == (gameObject = PrefabHelper.Load(@object.type, context))) {
