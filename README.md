@@ -15,8 +15,6 @@ KITTY can't make custom behaviours without coding those behaviours, though. You 
 character controllers, enemy AI, interaction behaviours etc. yourself, *or* use an off-the-shelf
 engine which will work as expected with KITTY's `PropertyHook` component.
 
-Note: This README is a teaser for 1.0.0 – some features are not yet implemented as described.
-
 ## Seamless basic integration
 
 KITTY supports importing Tiled's `.tmx` and `.tsx` file formats natively in Unity.
@@ -31,8 +29,9 @@ Advanced Tiled features like collision shapes, per-frame animation framerate and
 
 KITTY aggressively instantiates prefabs from Tiled objects based on the Type property in Tiled.
 
-The suggested workflow is to make a prefab (or prefab variant) for each generic object type, attach
-a bunch of components, and let the custom properties differentiate the specific object instances.
+The suggested workflow is to make a prefab (or prefab variant) for each generic object or tile
+object type, attach a bunch of components, and let the custom properties differentiate the specific
+object instances.
 
 Alternatively, you can mix and match manually created Unity objects with automatically imported
 Tiled objects without losing your work.
@@ -55,26 +54,27 @@ public class Sign : MonoBehaviour {
 	[TiledProperty] private string text;
 	[TiledProperty("Text Speed")] private float speed;
 
-	private BorderType border;
+	[SerializeField] private BorderType border;
 	[TiledProperty] private string Border {
 		get => border.ToString();
 		set => border = Enum.Parse(typeof(BorderType), value, ignoreCase: true);
 	}
 	private enum BorderType { Wood, Metal, }
 
-	private Color color;
+	[SerializeField] private Color color;
 	[TiledProperty]
-	private void Color(string value) {
-		ColorUtility.TryParseHtmlString(value, out color);
-	}
+	private void Color(string value) => ColorUtility.TryParseHtmlString(value, out color);
 }
 ```
+
+*Note: `[TiledProperty]` is currently only implemented for fields.
 
 KITTY also comes with the `PropertyHook` component for hooking Tiled properties to existing
 components' fields, properties, or methods which don't use the `[TiledProperty]` attribute, without
 having to code a wrapper.
 
 With this component on a prefab, Tiled properties can define, say, a camera's field of view, the
-volume of a background music track, or a GameObject's tag – all without any additional code.
+volume of a background music track, or a GameObject's tag – all imported through Tiled objects or
+tiles, and without any additional code.
 
 [Tiled]: https://www.mapeditor.org/
