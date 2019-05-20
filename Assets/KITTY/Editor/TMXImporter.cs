@@ -18,9 +18,6 @@ namespace KITTY {
 			var assetPathPrefix = Path.GetDirectoryName(assetPath) + Path.DirectorySeparatorChar;
 			// TODO: Support ../source.tsx
 			var tmx = new TMX(XDocument.Load(assetPath).Element("map"), assetPathPrefix);
-			// if (tmx.infinite) {
-				//throw new NotImplementedException("Infinite: " + tmx.infinite);
-			// }
 			var layout = tmx.orientation == "orthogonal"
 				? GridLayout.CellLayout.Rectangle
 				: tmx.orientation == "isometric"
@@ -39,7 +36,7 @@ namespace KITTY {
 							layer.data.encoding,
 							layer.data.compression,
 							layer.data.chunks[j].value,
-							layer.width,
+							layer.data.chunks[j].width,
 							layout
 						);
 						gidSet.UnionWith(gids[i][j]);
@@ -118,7 +115,7 @@ namespace KITTY {
 						var size = new Vector3Int(layer.data.chunks[j].width, layer.data.chunks[j].height, 1);
 						var bounds = new BoundsInt(
 							new Vector3Int(
-								layer.width - layer.data.chunks[j].width + layer.data.chunks[j].x,
+								layer.data.chunks[j].x,
 								layer.height - layer.data.chunks[j].height - layer.data.chunks[j].y,
 								0
 							),
