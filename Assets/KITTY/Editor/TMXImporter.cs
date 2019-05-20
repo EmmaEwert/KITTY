@@ -158,11 +158,12 @@ namespace KITTY {
 
 						if (string.IsNullOrEmpty(@object.type)) {
 							// Tile object instantiation when object has no set type, but tile does
-							if (tile.gameObject) {
+							if (tile?.gameObject) {
 								gameObject = Instantiate(tile.gameObject);
 								gameObject.name = gameObject.name.Substring(0, gameObject.name.Length - 7);
 								gameObject.name += $" {@object.id}";
 								foreach (var component in gameObject.GetComponentsInChildren<MonoBehaviour>()) {
+									ApplyProperties(tile.properties, component);
 									ApplyProperties(@object.properties, component);
 								}
 							// Default instantiation when object has no set type
@@ -180,7 +181,7 @@ namespace KITTY {
 						// Prefab instantiation based on object type
 						} else {
 							gameObject = PrefabUtility.InstantiatePrefab(gameObject) as GameObject;
-							gameObject.name = $"{@object.name} {@object.id}".Trim();
+							gameObject.name = $"{@object.name ?? @object.type} {@object.id}".Trim();
 							foreach (var component in gameObject.GetComponentsInChildren<MonoBehaviour>()) {
 								ApplyProperties(@object.properties, component);
 							}
@@ -225,6 +226,31 @@ namespace KITTY {
 			}
 
 			collider.generationType = CompositeCollider2D.GenerationType.Synchronous;
+		}
+
+		void ApplyProperties(Tile.Property[] properties, MonoBehaviour component) {
+			foreach (var field in component.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
+				var attribute = field.GetCustomAttribute<TiledPropertyAttribute>();
+				if (attribute == null) { continue; }
+				var fieldName = attribute.name ?? field.Name.ToLower();
+				var fieldType = field.FieldType.ToString();
+				switch (fieldType) {
+					case "System.String":  fieldType = "string"; break;
+					case "System.Int32":   fieldType = "int";    break;
+					case "System.Single":  fieldType = "float";  break;
+					case "System.Boolean": fieldType = "bool";   break;
+				}
+				foreach (var property in properties) {
+					if (property.name.ToLower().Replace(" ", "") == fieldName && property.type == fieldType) {
+						switch (property.type) {
+							case "string": field.SetValue(component,             property.value);  break;
+							case "int":    field.SetValue(component,   int.Parse(property.value)); break;
+							case "float":  field.SetValue(component, float.Parse(property.value)); break;
+							case "bool":   field.SetValue(component,  bool.Parse(property.value)); break;
+						}
+					}
+				}
+			}
 		}
 
 		void ApplyProperties(TMX.Layer.Object.Property[] properties, MonoBehaviour component) {

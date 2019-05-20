@@ -79,8 +79,10 @@ namespace KITTY {
 			public int id;
 			public string type;
 			public Image image;
+
 			public Object[] objects;
 			public Frame[] frames;
+			public Property[] properties;
 
 			public Tile(XElement element) {
 				id = (int)element.Attribute("id");
@@ -95,6 +97,11 @@ namespace KITTY {
 					.Element("animation")
 					?.Elements("frame")
 					.Select(frame => new Frame(frame))
+					.ToArray();
+				properties = element
+					.Elements("properties")
+					?.Elements("property")
+					.Select(p => new Property(p))
 					.ToArray();
 			}
 
@@ -129,6 +136,18 @@ namespace KITTY {
 				public Frame(XElement element) {
 					tileid   = (int?)element?.Attribute("tileid") ?? 0;
 					duration = (int?)element?.Attribute("duration") ?? 0;
+				}
+			}
+
+			public struct Property {
+				public string name;
+				public string type;
+				public string value;
+
+				public Property(XElement element) {
+					name = (string)element.Attribute("name");
+					type = (string)element.Attribute("type") ?? "string";
+					value = (string)element.Attribute("value") ?? element.Value;
 				}
 			}
 		}

@@ -17,6 +17,7 @@ namespace KITTY {
 			public GameObject prefab;
 			[HideInInspector] public Object[] objects;
 			[HideInInspector] public Frame[] frames;
+			[HideInInspector] public Property[] properties;
 
 			public KITTY.Tile Instantiate(float pixelsPerUnit) {
 				var tile = ScriptableObject.CreateInstance<KITTY.Tile>();
@@ -72,6 +73,12 @@ namespace KITTY {
 				} else {
 					tile.colliderType = UnityEngine.Tilemaps.Tile.ColliderType.None;
 				}
+				tile.properties = new KITTY.Tile.Property[properties?.Length ?? 0];
+				for (var i = 0; i < tile.properties.Length; ++i) {
+					tile.properties[i].name = properties[i].name;
+					tile.properties[i].type = properties[i].type;
+					tile.properties[i].value = properties[i].value;
+				}
 				return tile;
 			}
 
@@ -84,6 +91,13 @@ namespace KITTY {
 			public struct Frame {
 				public Rect rect;
 				public int duration;
+			}
+
+			[Serializable]
+			public struct Property {
+				public string name;
+				public string type;
+				public string value;
 			}
 
 			int GreatestCommonDivisor(int[] ns) {
