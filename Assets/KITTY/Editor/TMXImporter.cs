@@ -58,8 +58,10 @@ namespace KITTY {
 				if (tsx.source == null) { // Embedded tileset
 					tileset = TSXImporter.Load(context, tsx);
 				} else { // External tileset
-					tileset = AssetDatabase.LoadAssetAtPath<Tileset>(assetPathPrefix + tsx.source);
-					context.DependsOnSourceAsset(assetPathPrefix + tsx.source);
+					var tilesetSource = "Assets" + Path.GetFullPath(assetPathPrefix + tsx.source);
+					tilesetSource = tilesetSource.Substring(Application.dataPath.Length);
+					tileset = AssetDatabase.LoadAssetAtPath<Tileset>(tilesetSource);
+					context.DependsOnSourceAsset(tilesetSource);
 				}
 				var tilesetTiles = new Tile[tileset.tiles.Length];
 				for (var i = 0; i < tilesetTiles.Length; ++i) {
