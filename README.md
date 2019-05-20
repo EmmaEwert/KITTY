@@ -67,7 +67,7 @@ public class Sign : MonoBehaviour {
 }
 ```
 
-*Note: `[TiledProperty]` is currently only implemented for fields.
+*Note: `[TiledProperty]` is currently only implemented for fields.*
 
 KITTY also comes with the `PropertyHook` component for hooking Tiled properties to existing
 components' fields, properties, or methods which don't use the `[TiledProperty]` attribute, without
