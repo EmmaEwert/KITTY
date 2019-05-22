@@ -3,9 +3,9 @@ namespace KITTY {
 	using System.Collections.Generic;
 	using System.IO;
 	using System.Linq;
-	using System.Reflection;
 	using System.Xml.Linq;
 	using UnityEditor;
+	using UnityEditor.Animations;
 	using UnityEditor.Experimental.AssetImporters;
 	using UnityEngine;
 	using UnityEngine.Tilemaps;
@@ -86,6 +86,7 @@ namespace KITTY {
 
 			// Layers
 			PrefabHelper.cache.Clear();
+			var animationCache = new Dictionary<uint, AnimatorController>();
 			for (var i = 0; i < tmx.layers.Length; ++i) {
 				var layer = tmx.layers[i];
 				var layerObject = new GameObject(layer.name);
@@ -202,6 +203,7 @@ namespace KITTY {
 							gameObject.transform.localPosition += horizontal ? -gameObject.transform.right * @object.width / tmx.tilewidth : Vector3.zero;
 							gameObject.transform.localPosition += vertical ? -gameObject.transform.up * @object.height / tmx.tileheight : Vector3.zero;
 							var localPosition = new Vector3(@object.width / tmx.tilewidth / 2f, @object.height / tmx.tileheight / 2f);
+							// Renderer
 							var renderer = new GameObject("Renderer").AddComponent<SpriteRenderer>();
 							renderer.transform.SetParent(gameObject.transform, worldPositionStays: false);
 							renderer.sprite = sprite;
@@ -211,28 +213,64 @@ namespace KITTY {
 							renderer.size = new Vector2(@object.width, @object.height) / tmx.tilewidth;
 							renderer.color = new Color(1f, 1f, 1f, layer.opacity);
 							renderer.transform.localPosition = localPosition;
+							// Collider
 							if (tile.colliderType == UnityEngine.Tilemaps.Tile.ColliderType.Sprite) {
 								var shapeCount = sprite.GetPhysicsShapeCount();
-								if (shapeCount == 1) {
+								for (var j = 0; j < shapeCount; ++j) {
 									var points = new List<Vector2>();
-									sprite.GetPhysicsShape(0, points);
-									var collider = new GameObject($"Collider").AddComponent<PolygonCollider2D>();
+									sprite.GetPhysicsShape(j, points);
+									var collider = new GameObject($"Collider {j}").AddComponent<PolygonCollider2D>();
 									collider.transform.SetParent(gameObject.transform, worldPositionStays: false);
 									collider.transform.localPosition = localPosition;
 									collider.points = points.ToArray();
-								} else if (shapeCount > 1) {
-									var composite = new GameObject("Colliders").AddComponent<CompositeCollider2D>();
-									composite.transform.SetParent(gameObject.transform, worldPositionStays: false);
-									composite.transform.localPosition = localPosition;
-									for (var j = 0; j < shapeCount; ++j) {
-										var points = new List<Vector2>();
-										sprite.GetPhysicsShape(j, points);
-										var collider = new GameObject($"Collider {j}").AddComponent<PolygonCollider2D>();
-										collider.transform.SetParent(composite.transform, worldPositionStays: false);
-										collider.points = points.ToArray();
-										collider.usedByComposite = true;
-									}
 								}
+							}
+							// Animation
+							if (tile.sprites.Length > 1) {
+								if (!animationCache.TryGetValue(@object.gid & 0x1fffffff, out var controller)) {
+									controller = new AnimatorController();
+									controller.name = $"{@object.gid}";
+									controller.AddLayer("Base Layer");
+									controller.layers[0].stateMachine = new AnimatorStateMachine();
+									controller.hideFlags = HideFlags.HideInHierarchy;
+									var stateMachine = controller.layers[0].stateMachine;
+									var binding = new EditorCurveBinding {
+										type = typeof(SpriteRenderer),
+										path = "",
+										propertyName = "m_Sprite",
+									};
+									var states = new AnimatorState[tile.sprites.Length];
+									for (var j = 0; j < states.Length; ++j) {
+										var clip = new AnimationClip();
+										clip.frameRate = 1000f / tile.duration;
+										clip.name = $"{@object.gid} {j}";
+										clip.hideFlags = HideFlags.HideInHierarchy;
+										var keyframes = new [] {
+											new ObjectReferenceKeyframe {
+												time = 0,
+												value = tile.sprites[j],
+											}
+										};
+										AnimationUtility.SetObjectReferenceCurve(clip, binding, keyframes);
+										states[j] = stateMachine.AddState($"{j}");
+										states[j].motion = clip;
+										states[j].writeDefaultValues = false;
+										context.AddObjectToAsset($"AnimationClip {@object.gid} {j}", clip);
+										context.AddObjectToAsset($"AnimatorState {@object.gid} {j}", states[j]);
+									}
+									for (var j = 0; j < states.Length; ++j) {
+										var transition = states[j].AddTransition(states[(j+1) % states.Length]);
+										transition.hasExitTime = true;
+										transition.exitTime = 1f;
+										transition.duration = 0f;
+										context.AddObjectToAsset($"AnimatorStateTransition {@object.gid} {j}", transition);
+									}
+									animationCache[@object.gid & 0x1fffffff] = controller;
+									context.AddObjectToAsset($"AnimatorController {@object.gid}", controller);
+									context.AddObjectToAsset($"AnimatorStateMachine {@object.gid}", controller.layers[0].stateMachine);
+								}
+								var animator = renderer.gameObject.AddComponent<Animator>();
+								animator.runtimeAnimatorController = controller;
 							}
 						} else {
 							gameObject.transform.localPosition =
