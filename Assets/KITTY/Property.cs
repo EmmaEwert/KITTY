@@ -13,7 +13,7 @@ namespace KITTY {
 
 		public static Property[] Merge(Property[] primary, Property[] secondary) {
 			var properties = new List<Property>();
-			for (var i = 0; i < secondary.Length; ++i) {
+			for (var i = 0; i < secondary?.Length; ++i) {
 				if (!primary.Any(p => p.name == secondary[i].name)) {
 					properties.Add(secondary[i]);
 				}

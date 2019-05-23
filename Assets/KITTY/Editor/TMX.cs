@@ -76,14 +76,14 @@ namespace KITTY {
 					chunks = element
 						?.Elements("chunk")
 						.Select(c => new Chunk(c))
-						.ToArray();
-					if (chunks?.Length == 0 && element != null) {
+						.ToArray() ?? new Chunk[0];
+					if (chunks.Length == 0 && element != null) {
 						chunks = new [] { new Chunk {
 							x = 0,
 							y = 0,
 							width = width,
 							height = height,
-							value = element?.Value
+							value = element.Value
 						}};
 					}
 				}
