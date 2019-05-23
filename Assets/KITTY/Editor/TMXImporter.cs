@@ -137,8 +137,10 @@ namespace KITTY {
 							var flips = new Vector4(diagonal, vertical, horizontal, 0);
 							if (flips.sqrMagnitude > 0f) {
 								var tilePosition = new Vector3Int(
-									tmxLayer.width - tmxChunk.width + k % tmxChunk.width,
-									tmxLayer.height - tmxChunk.height + k / tmxChunk.width,
+									tmxLayer.width - tmxChunk.width + tmxChunk.x
+										+ k % tmxChunk.width + tmxChunk.x,
+									tmxLayer.height - tmxChunk.height - tmxChunk.y
+										+ k / tmxChunk.width - tmxChunk.y,
 									0
 								);
 								var transform = Matrix4x4.TRS(
@@ -150,6 +152,8 @@ namespace KITTY {
 									) * 2
 								);
 								tilemap.SetTransformMatrix(tilePosition, transform);
+								Debug.Log(tilePosition);
+								Debug.Log(transform);
 							}
 						}
 					}
