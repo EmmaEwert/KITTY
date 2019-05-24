@@ -34,16 +34,21 @@ namespace KITTY {
 			// Build an array of layers, each an array of chunks, each an array of global IDs.
 			var layers = new Layer[tmx.layers.Length];
 			for (var i = 0; i < layers.Length; ++i) {
-				var layer = tmx.layers[i];
-				layers[i].chunks = new Layer.Chunk[layer.data.chunks.Length];
+				layers[i].name = tmx.layers[i].name;
+				layers[i].opacity = tmx.layers[i].opacity;
+				layers[i].chunks = new Layer.Chunk[tmx.layers[i].data.chunks.Length];
 				for (var j = 0; j < layers[i].chunks.Length; ++j) {
 					layers[i].chunks[j] = ParseChunk(
-						layer.data.encoding,
-						layer.data.compression,
-						layer.data.chunks[j].value,
-						layer.data.chunks[j].width,
+						tmx.layers[i].data.encoding,
+						tmx.layers[i].data.compression,
+						tmx.layers[i].data.chunks[j].value,
+						tmx.layers[i].data.chunks[j].width,
 						layout
 					);
+					layers[i].chunks[j].width  = tmx.layers[i].data.chunks[j].width;
+					layers[i].chunks[j].height = tmx.layers[i].data.chunks[j].height;
+					layers[i].chunks[j].x      = tmx.layers[i].data.chunks[j].x;
+					layers[i].chunks[j].y      = tmx.layers[i].data.chunks[j].y;
 				}
 			}
 			
@@ -89,79 +94,11 @@ namespace KITTY {
 			PrefabHelper.cache.Clear();
 			var animationCache = new Dictionary<uint, AnimatorController>();
 			for (var i = 0; i < tmx.layers.Length; ++i) {
-				var tmxLayer = tmx.layers[i];
 				var layer = layers[i];
-				var layerObject = new GameObject(tmxLayer.name);
+				var tmxLayer = tmx.layers[i];
+				var layerObject = new GameObject(layer.name);
 				layerObject.transform.parent = grid.transform;
 				layerObject.isStatic = true;
-
-				// Tile layer
-				if (layer.chunks.Length > 0) {
-					// Tilemap
-					var tilemap = layerObject.AddComponent<Tilemap>();
-					var renderer = layerObject.AddComponent<TilemapRenderer>();
-					layerObject.AddComponent<TilemapCollider2D>().usedByComposite = true;
-					tilemap.color = new Color(1f, 1f, 1f, tmxLayer.opacity);
-					if (layout == GridLayout.CellLayout.Hexagon) {
-						tilemap.orientation = Tilemap.Orientation.Custom;
-						tilemap.orientationMatrix = Matrix4x4.TRS(
-							Vector3.zero,
-							Quaternion.Euler(0f, 180f, 180f),
-							Vector3.one
-						);
-						tilemap.transform.localScale = new Vector3(1f, -1f, 1f);
-					}
-					// Chunks
-					for (var j = 0; j < layer.chunks.Length; ++j) {
-						var chunk = layer.chunks[j];
-						var tmxChunk = tmxLayer.data.chunks[j];
-						var tiles = new Tile[chunk.gids.Length];
-						for (var k = 0; k < tiles.Length; ++k) {
-							// 3 MSB are for flipping
-							tiles[k] = tileset[(int)(chunk.gids[k] & 0x1ffffff)];
-						}
-						var position = new Vector3Int(
-							tmxChunk.x,
-							tmxLayer.height - tmxChunk.height - tmxChunk.y,
-							0
-						);
-						var size = new Vector3Int(tmxChunk.width, tmxChunk.height, 1);
-						var bounds = new BoundsInt(position, size);
-						tilemap.SetTilesBlock(bounds, tiles);
-						// Flipped tiles
-						for (var k = 0; k < chunk.gids.Length; ++k) {
-							var gid = chunk.gids[k];
-							var diagonal   = (gid >> 29) & 1;
-							var vertical   = (gid >> 30) & 1;
-							var horizontal = (gid >> 31) & 1;
-							var flips = new Vector4(diagonal, vertical, horizontal, 0);
-							if (flips.sqrMagnitude > 0f) {
-								var tilePosition = new Vector3Int(
-									tmxLayer.width - tmxChunk.width + tmxChunk.x
-										+ k % tmxChunk.width + tmxChunk.x,
-									tmxLayer.height - tmxChunk.height - tmxChunk.y
-										+ k / tmxChunk.width - tmxChunk.y,
-									0
-								);
-								var transform = Matrix4x4.TRS(
-									Vector3.zero,
-									Quaternion.AngleAxis(diagonal * 180, new Vector3(1, 1, 0)),
-									Vector3.one - (diagonal == 1
-										? new Vector3(flips.y, flips.z, flips.w)
-										: new Vector3(flips.z, flips.y, flips.w)
-									) * 2
-								);
-								tilemap.SetTransformMatrix(tilePosition, transform);
-								Debug.Log(tilePosition);
-								Debug.Log(transform);
-							}
-						}
-					}
-					renderer.sortingOrder = i;
-					renderer.sortOrder = layout == GridLayout.CellLayout.Hexagon
-						? TilemapRenderer.SortOrder.BottomLeft
-						: TilemapRenderer.SortOrder.TopLeft;
-				}
 
 				// Object layer
 				foreach (var @object in tmxLayer.objects) {
@@ -241,7 +178,7 @@ namespace KITTY {
 						renderer.spriteSortPoint = SpriteSortPoint.Pivot;
 						renderer.drawMode = SpriteDrawMode.Sliced; // HACK: Makes renderer.size work
 						renderer.size = new Vector2(@object.width, @object.height) / tmx.tilewidth;
-						renderer.color = new Color(1f, 1f, 1f, tmxLayer.opacity);
+						renderer.color = new Color(1f, 1f, 1f, layer.opacity);
 						// Collider
 						if (tile.colliderType == UnityEngine.Tilemaps.Tile.ColliderType.Sprite) {
 							var shapeCount = sprite.GetPhysicsShapeCount();
@@ -333,6 +270,69 @@ namespace KITTY {
 						);
 					}
 				}
+
+				if (layer.chunks.Length == 0) { continue; }
+				
+				// Tile layer
+				var tilemap = layerObject.AddComponent<Tilemap>();
+				var renderer = layerObject.AddComponent<TilemapRenderer>();
+				layerObject.AddComponent<TilemapCollider2D>().usedByComposite = true;
+				tilemap.color = new Color(1f, 1f, 1f, layer.opacity);
+				if (layout == GridLayout.CellLayout.Hexagon) {
+					tilemap.orientation = Tilemap.Orientation.Custom;
+					tilemap.orientationMatrix = Matrix4x4.TRS(
+						Vector3.zero,
+						Quaternion.Euler(0f, 180f, 180f),
+						Vector3.one
+					);
+					tilemap.transform.localScale = new Vector3(1f, -1f, 1f);
+				}
+				// Chunks
+				for (var j = 0; j < layer.chunks.Length; ++j) {
+					var chunk = layer.chunks[j];
+					var tiles = new Tile[chunk.gids.Length];
+					for (var k = 0; k < tiles.Length; ++k) {
+						// 3 MSB are for flipping
+						tiles[k] = tileset[(int)(chunk.gids[k] & 0x1ffffff)];
+					}
+					var position = new Vector3Int(
+						chunk.x,
+						layer.height - chunk.height - chunk.y,
+						0
+					);
+					var size = new Vector3Int(chunk.width, chunk.height, 1);
+					var bounds = new BoundsInt(position, size);
+					tilemap.SetTilesBlock(bounds, tiles);
+					// Flipped tiles
+					for (var k = 0; k < chunk.gids.Length; ++k) {
+						var gid = chunk.gids[k];
+						var diagonal   = (gid >> 29) & 1;
+						var vertical   = (gid >> 30) & 1;
+						var horizontal = (gid >> 31) & 1;
+						var flips = new Vector4(diagonal, vertical, horizontal, 0);
+						if (flips.sqrMagnitude == 0f) { continue; }
+						var tilePosition = new Vector3Int(
+							layer.width - chunk.width + chunk.x
+								+ k % chunk.width + chunk.x,
+							layer.height - chunk.height - chunk.y
+								+ k / chunk.width - chunk.y,
+							0
+						);
+						var transform = Matrix4x4.TRS(
+							Vector3.zero,
+							Quaternion.AngleAxis(diagonal * 180, new Vector3(1, 1, 0)),
+							Vector3.one - (diagonal == 1
+								? new Vector3(flips.y, flips.z, flips.w)
+								: new Vector3(flips.z, flips.y, flips.w)
+							) * 2
+						);
+						tilemap.SetTransformMatrix(tilePosition, transform);
+					}
+				}
+				renderer.sortingOrder = i;
+				renderer.sortOrder = layout == GridLayout.CellLayout.Hexagon
+					? TilemapRenderer.SortOrder.BottomLeft
+					: TilemapRenderer.SortOrder.TopLeft;
 			}
 
 			gridCollider.generationType = CompositeCollider2D.GenerationType.Synchronous;
@@ -377,8 +377,16 @@ namespace KITTY {
 		}
 
 		struct Layer {
+			public string name;
+			public float opacity;
+			public int width;
+			public int height;
 			public Chunk[] chunks;
 			public struct Chunk {
+				public int width;
+				public int height;
+				public int x;
+				public int y;
 				public uint[] gids;
 			}
 		}
