@@ -262,7 +262,7 @@ namespace KITTY {
 			Tile tile
 		) {
 			var name = $"{@object.name ?? @object.type ?? tile?.gameObject?.name ?? ""}";
-			name = "{name} {@object.id}".Trim();
+			name = $"{name} {@object.id}".Trim();
 			GameObject gameObject = null;
 			var properties = Property.Merge(@object.properties, tile?.properties);
 			var icon = string.Empty;
@@ -271,7 +271,7 @@ namespace KITTY {
 				// Instantiate prefab based on object type.
 				var prefab = PrefabHelper.Load(@object.type, context);
 				if (prefab) {
-					gameObject = PrefabUtility.InstantiatePrefab(gameObject) as GameObject;
+					gameObject = PrefabUtility.InstantiatePrefab(prefab) as GameObject;
 				}
 
 			} else if (tile?.gameObject) {
