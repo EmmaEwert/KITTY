@@ -321,8 +321,9 @@ namespace KITTY {
 			var controller = new AnimatorController();
 			controller.name = name;
 			controller.AddLayer("Base Layer");
+			controller.layers[0].stateMachine = new AnimatorStateMachine();
 			controller.hideFlags = HideFlags.HideInHierarchy;
-			var stateMachine = controller.layers[0].stateMachine = new AnimatorStateMachine();
+			var stateMachine = controller.layers[0].stateMachine;
 			var binding = new EditorCurveBinding {
 				type = typeof(SpriteRenderer),
 				path = "",
