@@ -23,8 +23,9 @@ namespace KITTY {
 			var map = new Map(context, tmx);
 
 			// Generate tilemap grid prefab and layer game objects.
-			var grid = GenerateGrid(context, map);
-			var gameObjects = GenerateLayerGameObjects(context, map);
+			PrefabHelper.cache.Clear();
+			var grid = CreateGrid(context, map);
+			var gameObjects = CreateLayers(context, map);
 
 			// Parent the layer game objects to the tilemap grid prefab.
 			foreach (var gameObject in gameObjects) {
@@ -32,262 +33,272 @@ namespace KITTY {
 			}
 		}
 
-		///<summary>Instantiate and configure main grid game object.</summary>
-		GameObject GenerateGrid(
-			AssetImportContext context,
-			Map map
-		) {
-			var gameObject = new GameObject(Path.GetFileNameWithoutExtension(assetPath));
+		///<summary>
+		///Create and configure main Grid GameObject.
+		///</summary>
+		static GameObject CreateGrid(AssetImportContext context, Map map) {
+			var gameObject = new GameObject(Path.GetFileNameWithoutExtension(context.assetPath));
 			var grid = gameObject.AddComponent<Grid>();
-			grid.cellSize = new Vector3(1f, (float)map.tileheight / map.tilewidth, 1f);
+			gameObject.isStatic = true;
+
 			switch (map.orientation) {
 				case "orthogonal": grid.cellLayout = CellLayout.Rectangle; break;
 				case "isometric":  grid.cellLayout = CellLayout.Isometric; break;
 				case "hexagonal":  grid.cellLayout = CellLayout.Hexagon;   break;
 				default: throw new NotImplementedException($"Orientation: {map.orientation}");
 			}
+			grid.cellSize = new Vector3(1f, (float)map.tileheight / map.tilewidth, 1f);
+
 			gameObject.AddComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Static;
 			gameObject.AddComponent<CompositeCollider2D>();
-			gameObject.isStatic = true;
+
 			context.AddObjectToAsset("Grid", gameObject);
 			context.SetMainObject(gameObject);
+
 			return gameObject;
 		}
 
-		///<summary>Generate gameobjects for each layer</summary>
-		GameObject[] GenerateLayerGameObjects(
-			AssetImportContext context,
-			Map map
-		) {
-			PrefabHelper.cache.Clear();
+		///<summary>
+		///Create a GameObject for each layer.
+		///</summary>
+		static GameObject[] CreateLayers(AssetImportContext context, Map map) {
 			var animators = new Dictionary<uint, AnimatorController>();
 			var layerObjects = new GameObject[map.layers.Length];
+
+			// A layer can be either a tile layer (has chunks), or an object layer (no chunks).
 			for (var i = 0; i < layerObjects.Length; ++i) {
 				var layer = map.layers[i];
-				var layerObject = new GameObject(layer.name);
-				layerObject.isStatic = true;
-				layerObjects[i] = layerObject;
 				if (layer.chunks.Length > 0) {
-					GenerateTilemapLayer(
-						map,
-						layer,
-						layerObject,
-						sortingOrder: i
-					);
+					layerObjects[i] = CreateTileLayer(map, layer, order: i);
 				} else {
-					GenerateObjectLayer(
-						context,
-						map,
-						layer,
-						layerObject,
-						sortingOrder: i,
-						animators
-					);
+					layerObjects[i] = CreateObjectLayer(context, map, layer, order: i, animators);
 				}
-
+				layerObjects[i].isStatic = true;
 			}
+
 			return layerObjects;
 		}
 
-		///<summary>Add and configure tilemap component for layer.</summary>
-		private void GenerateTilemapLayer(
-			Map map,
-			Map.Layer layer,
-			GameObject layerObject,
-			int sortingOrder
-		) {
+		///<summary>
+		///Add and configure a Tilemap component for a layer.
+		///</summary>
+		static GameObject CreateTileLayer(Map map, Map.Layer layer, int order) {
+			var layerObject = new GameObject(layer.name);
 			var tilemap = layerObject.AddComponent<UnityEngine.Tilemaps.Tilemap>();
-			var tilemapRenderer = layerObject.AddComponent<TilemapRenderer>();
+			var renderer = layerObject.AddComponent<TilemapRenderer>();
 			layerObject.AddComponent<TilemapCollider2D>().usedByComposite = true;
 			tilemap.color = new Color(1f, 1f, 1f, layer.opacity);
+			renderer.sortingOrder = order;
+
+			// Hexagonal maps have to be rotated 180 degrees, flipped horizontally, and the tilemap
+			// object has to be flipped vertically. Because of this, the sort order is also weird :/
 			if (map.orientation == "hexagonal") {
 				tilemap.orientation = UnityEngine.Tilemaps.Tilemap.Orientation.Custom;
-				tilemap.orientationMatrix = Matrix4x4.TRS(
-					Vector3.zero,
-					Quaternion.Euler(0f, 180f, 180f),
-					Vector3.one
-				);
+				tilemap.orientationMatrix = Matrix4x4.Rotate(Quaternion.Euler(0f, 180f, 180f));
 				tilemap.transform.localScale = new Vector3(1f, -1f, 1f);
-				tilemapRenderer.sortOrder = TilemapRenderer.SortOrder.BottomLeft;
+				renderer.sortOrder = TilemapRenderer.SortOrder.BottomLeft;
 			} else {
-				tilemapRenderer.sortOrder = TilemapRenderer.SortOrder.TopLeft;
+				renderer.sortOrder = TilemapRenderer.SortOrder.TopLeft;
 			}
-			tilemapRenderer.sortingOrder = sortingOrder;
 
-			// Chunks
+			// Tiled generally defines Y-positive as down, whereas Unity defines it as up.
+			// This effectively means that all positions need to have their Y-component reversed.
 			for (var j = 0; j < layer.chunks.Length; ++j) {
 				var chunk = layer.chunks[j];
-				var chunkTiles = new Tile[chunk.gids.Length];
-				for (var k = 0; k < chunkTiles.Length; ++k) {
-					// 3 MSB are for flipping
-					chunkTiles[k] = map.tiles[(int)(chunk.gids[k] & 0x1ffffff)];
-				}
-				var position = new Vector3Int(
-					chunk.x,
-					layer.height - chunk.height - chunk.y,
-					0
-				);
+				var position = new Vector3Int(chunk.x, layer.height - chunk.height - chunk.y, 0);
 				var size = new Vector3Int(chunk.width, chunk.height, 1);
 				var bounds = new BoundsInt(position, size);
-				tilemap.SetTilesBlock(bounds, chunkTiles);
+				tilemap.SetTilesBlock(bounds, GetTiles(map, layer, chunk));
+				FlipTiles(tilemap, layer, chunk);
+			}
 
-				// Flipped tiles
-				for (var k = 0; k < chunk.gids.Length; ++k) {
-					var gid = chunk.gids[k];
-					var diagonal   = (gid >> 29) & 1;
-					var vertical   = (gid >> 30) & 1;
-					var horizontal = (gid >> 31) & 1;
-					if (diagonal + vertical + horizontal == 0f) { continue; }
-					var tilePosition = new Vector3Int(
-						layer.width  - chunk.width  + chunk.x + k % chunk.width,
-						layer.height - chunk.height - chunk.y + k / chunk.width,
-						0
-					);
-					var transform = Matrix4x4.TRS(
-						pos: Vector3.zero,
-						Quaternion.AngleAxis(diagonal * 180, new Vector3(-1, 1, 0)),
-						Vector3.one - (diagonal == 1
-							? new Vector3(vertical, horizontal)
-							: new Vector3(horizontal, vertical)
-						) * 2
-					);
-					tilemap.SetTransformMatrix(tilePosition, transform);
+			return layerObject;
+		}
+
+		///<summary>
+		///Get an array of all tiles in a chunk.
+		///</summary>
+		static Tile[] GetTiles(Map map, Map.Layer layer, Map.Layer.Chunk chunk) {
+			var tiles = new Tile[chunk.gids.Length];
+
+			for (var k = 0; k < tiles.Length; ++k) {
+				tiles[k] = map.tiles[chunk.gids[k] & 0x1ffffff];
+			}
+
+			return tiles;
+		}
+
+		///<summary>
+		///Flip all tiles in a chunk according to their 3 most significant flip bits, if any.
+		///</summary>
+		static void FlipTiles(Tilemap tilemap, Map.Layer layer, Map.Layer.Chunk chunk) {
+			var chunkPosition = new Vector3Int(chunk.x, layer.height - chunk.height - chunk.y, 0);
+
+			for (var k = 0; k < chunk.gids.Length; ++k) {
+				var gid = chunk.gids[k];
+
+				// The 3 most significant bits indicate in what way the tile should be flipped.
+				if (gid >> 29 == 0) { continue; }
+				var diagonal   = (gid >> 29) & 1;
+				var vertical   = (gid >> 30) & 1;
+				var horizontal = (gid >> 31) & 1;
+
+				var position = chunkPosition + new Vector3Int(k % chunk.width, k / chunk.width, 0);
+				var rotation = Quaternion.identity;
+				var scale = Vector3.one;
+
+				// Scaling a tile transform by a negative amount effectively flips it.
+				// If it's also flipped diagonally, vertical and horizontal scales are swapped.
+				if (diagonal == 1) {
+					rotation = Quaternion.AngleAxis(180f, new Vector3(-1f, 1f, 0f));
+					scale -= new Vector3(vertical, horizontal) * 2f;
+				} else {
+					scale -= new Vector3(horizontal, vertical) * 2f;
 				}
+
+				var transform = Matrix4x4.TRS(pos: Vector3.zero, rotation, scale);
+				tilemap.SetTransformMatrix(position, transform);
 			}
 		}
 
-		///<summary>Generate a game object for each Tiled object in layer.</summary>
-		private void GenerateObjectLayer(
+		///<summary>
+		///Create a GameObject for each Tiled object in layer.
+		///</summary>
+		static GameObject CreateObjectLayer(
 			AssetImportContext context,
 			Map map,
 			Map.Layer layer,
-			GameObject layerObject,
-			int sortingOrder,
+			int order,
 			Dictionary<uint, AnimatorController> animators
 		) {
-			// Object layer
+			var layerGameObject = new GameObject(layer.name);
+
 			foreach (var @object in layer.objects) {
 				var tile = map.tiles[(int)(@object.gid & 0x1fffffff)];
 				var sprite = tile?.sprite;
-				var gameObject = GenerateGameObject(context, @object, tile);
+				var gameObject = CreateObject(context, @object, tile);
+				var size =
+					new Vector2(@object.width / map.tilewidth, @object.height / map.tileheight);
 
-				// Transform
-				gameObject.transform.parent = layerObject.transform;
+				// Since Tiled's up is Y-negative while Unity's is Y-positive, the Y position is
+				// effectively reversed.
+				gameObject.transform.parent = layerGameObject.transform;
 				gameObject.transform.localPosition = new Vector3(
 					@object.x / map.tilewidth,
 					-@object.y / map.tileheight + map.height
 				);
-				gameObject.transform.localRotation *=
-					Quaternion.Euler(0f, 0f, -@object.rotation);
 
-				// Non-tile-based object
+				// Tiled's rotation is clockwise, while Unity's is anticlockwise.
+				gameObject.transform.localRotation *= Quaternion.Euler(0f, 0f, -@object.rotation);
+
+				// Continue early if there's no tile or sprite associated with the object.
 				if (!sprite) {
-					gameObject.transform.localPosition +=
-						Vector3.down * @object.height / map.tileheight;
+					gameObject.transform.localPosition += Vector3.down * size.y;
 					continue;
 				}
 
-				// Tile-based object
-				// Flips
-				var diagonal   = ((@object.gid >> 29) & 1) == 1;
+				// Position children of the GameObject at the center of the object.
+				var childPosition = size / 2f;
+
+				// Rotate and realign the object based on 3 most significant flip bits.
+				//var diagonal   = ((@object.gid >> 29) & 1) == 1;
 				var vertical   = ((@object.gid >> 30) & 1) == 1;
 				var horizontal = ((@object.gid >> 31) & 1) == 1;
-
-				// Transform
-				gameObject.transform.localRotation *=
-					Quaternion.Euler(vertical ? 180f : 0f, horizontal ? 180f : 0f, 0f);
-				if (horizontal) {
-					gameObject.transform.localPosition -=
-						gameObject.transform.right * @object.width / map.tilewidth;
-				}
 				if (vertical) {
-					gameObject.transform.localPosition -=
-						gameObject.transform.up * @object.height / map.tileheight;
+					gameObject.transform.localRotation *= Quaternion.Euler(180f, 0f, 0f);
+					gameObject.transform.localPosition -= gameObject.transform.up * size.y;
 				}
-				var childPosition = new Vector3(
-					@object.width / map.tilewidth / 2f,
-					@object.height / map.tileheight / 2f
-				);
+				if (horizontal) {
+					gameObject.transform.localRotation *= Quaternion.Euler(0f, 180f, 0f);
+					gameObject.transform.localPosition -= gameObject.transform.right * size.x;
+				}
 
-				// Renderer
+				// Create a SpriteRenderer child object, and scale it according to object size. 
 				var renderer = new GameObject("Renderer").AddComponent<SpriteRenderer>();
 				renderer.transform.SetParent(gameObject.transform);
 				renderer.transform.localPosition = childPosition;
 				renderer.transform.localRotation = Quaternion.identity;
 				renderer.sprite = sprite;
-				renderer.sortingOrder = sortingOrder;
+				renderer.sortingOrder = order;
 				renderer.spriteSortPoint = SpriteSortPoint.Pivot;
 				renderer.drawMode = SpriteDrawMode.Sliced; // HACK: Makes renderer.size work
 				renderer.size = new Vector2(@object.width, @object.height) / map.tilewidth;
 				renderer.color = new Color(1f, 1f, 1f, layer.opacity);
 
-				// Collider
+				// A new animator controller is created for each unique tile, if necessary.
+				if (tile.sprites.Length > 1) {
+					if (!animators.TryGetValue(@object.gid & 0x1fffffff, out var controller)) {
+						controller = CreateAnimatorController(context, $"{@object.gid}", tile);
+						animators[@object.gid & 0x1fffffff] = controller;
+					}
+					var animator = renderer.gameObject.AddComponent<Animator>();
+					animator.runtimeAnimatorController = controller;
+				}
+
+				// A Collider child object is created for each collision shape defined in Tiled.
 				if (tile.colliderType == Tile.ColliderType.Sprite) {
 					var shapeCount = sprite.GetPhysicsShapeCount();
 					for (var j = 0; j < shapeCount; ++j) {
 						var points = new List<Vector2>();
 						sprite.GetPhysicsShape(j, points);
 						var collider = new GameObject($"Collider {j}");
+						collider.AddComponent<PolygonCollider2D>().points = points.ToArray();
 						collider.transform.SetParent(gameObject.transform);
 						collider.transform.localPosition = childPosition;
 						collider.transform.localRotation = Quaternion.identity;
-						collider.AddComponent<PolygonCollider2D>().points =
-							points.ToArray();
 					}
-				}
-
-				// Animator
-				if (tile.sprites.Length > 1) {
-					if (!animators.TryGetValue(@object.gid & 0x1fffffff, out var controller)) {
-						controller = GenerateAnimatorController(context, @object.gid, tile);
-						animators[@object.gid & 0x1fffffff] = controller;
-					}
-					var animator = renderer.gameObject.AddComponent<Animator>();
-					animator.runtimeAnimatorController = controller;
 				}
 			}
+
+			return layerGameObject;
 		}
 
-		///<summary>Load or generate GameObject based on object or tile type, if any.</summary>
-		GameObject GenerateGameObject(AssetImportContext context, TMX.Layer.Object @object, Tile tile) {
-			GameObject gameObject;
+		///<summary>
+		///Load prefab based on object or tile type, if any, or create a GameObject otherwise.
+		///</summary>
+		static GameObject CreateObject(
+			AssetImportContext context,
+			TMX.Layer.Object @object,
+			Tile tile
+		) {
+			var name = $"{@object.name ?? @object.type ?? tile?.gameObject?.name ?? ""}";
+			name = "{name} {@object.id}".Trim();
+			GameObject gameObject = null;
 			var properties = Property.Merge(@object.properties, tile?.properties);
 			var icon = string.Empty;
 
-			if (string.IsNullOrEmpty(@object.type)) {
-				// Tile object instantiation when object has no set type, but tile does
-				if (tile?.gameObject) {
-					var name = $"{tile.gameObject.name} {@object.id}";
-					gameObject = Instantiate(tile.gameObject);
-					gameObject.name = name;
-					var components = gameObject.GetComponentsInChildren<MonoBehaviour>();
-					foreach (var component in components) {
-						Property.Apply(properties, component);
-					}
-				// Default instantiation when object has no set type
-				} else {
-					gameObject = new GameObject($"{@object.name} {@object.id}".Trim());
-					icon = "sv_label_0";
+			if (!string.IsNullOrEmpty(@object.type)) {
+				// Instantiate prefab based on object type.
+				var prefab = PrefabHelper.Load(@object.type, context);
+				if (prefab) {
+					gameObject = PrefabUtility.InstantiatePrefab(gameObject) as GameObject;
 				}
 
-			// Warn instantiation when object has type but no prefab was found
-			// TODO: Consider tile type
-			} else if (null == (gameObject = PrefabHelper.Load(@object.type, context))) {
-				var name = string.IsNullOrEmpty(@object.name) ? @object.type : @object.name;
-				gameObject = new GameObject($"{name} {@object.id}".Trim());
-				icon = "sv_label_6";
+			} else if (tile?.gameObject) {
+				// Instantiate GameObject based on tile type.
+				gameObject = Instantiate(tile.gameObject);
 
-			// Prefab instantiation based on object type
 			} else {
-				gameObject = PrefabUtility.InstantiatePrefab(gameObject) as GameObject;
-				gameObject.name = $"{@object.name ?? @object.type} {@object.id}".Trim();
+				// Default instantiation when object and tile have no set type
+				gameObject = new GameObject(name);
+				icon = "sv_label_0";
+			}
+
+			if (gameObject != null) {
+				// Apply properties to all behaviours.
+				gameObject.name = name;
 				var components = gameObject.GetComponentsInChildren<MonoBehaviour>();
 				foreach (var component in components) {
 					Property.Apply(properties, component);
 				}
+
+			} else {
+				// Warn on instantiation when object has type but no prefab was found.
+				gameObject = new GameObject(name);
+				icon = "sv_label_6";
 			}
 
-			// Icon
+			// Apply icon to GameObject, if any.
 			if (!string.IsNullOrEmpty(icon)) {
 				InternalEditorGUIHelper.SetIconForObject(
 					gameObject,
@@ -298,20 +309,27 @@ namespace KITTY {
 			return gameObject;
 		}
 
-		///<summary>Generate animator controller for objects based on animated tiles.</summary>
-		AnimatorController GenerateAnimatorController(AssetImportContext context, uint gid, Tile tile) {
+		///<summary>
+		///Create an animator controller for an object based on an animated tile's frames.
+		///</summary>
+		static AnimatorController CreateAnimatorController(
+			AssetImportContext context,
+			string name,
+			Tile tile
+		) {
+			// Create an animator controller with a default layer and state machine.
 			var controller = new AnimatorController();
-			var name = $"{gid}";
 			controller.name = name;
 			controller.AddLayer("Base Layer");
-			controller.layers[0].stateMachine = new AnimatorStateMachine();
 			controller.hideFlags = HideFlags.HideInHierarchy;
-			var stateMachine = controller.layers[0].stateMachine;
+			var stateMachine = controller.layers[0].stateMachine = new AnimatorStateMachine();
 			var binding = new EditorCurveBinding {
 				type = typeof(SpriteRenderer),
 				path = "",
 				propertyName = "m_Sprite",
 			};
+
+			/// Each frame is defined as its own state, with duration and immediate transitions.
 			var states = new AnimatorState[tile.sprites.Length];
 			for (var j = 0; j < states.Length; ++j) {
 				var clip = new AnimationClip();
@@ -319,22 +337,17 @@ namespace KITTY {
 				clip.name = $"{name} {j}";
 				clip.hideFlags = HideFlags.HideInHierarchy;
 				var keyframes = new [] {
-					new ObjectReferenceKeyframe {
-						time = 0,
-						value = tile.sprites[j],
-					}
+					new ObjectReferenceKeyframe { time = 0, value = tile.sprites[j] }
 				};
-				AnimationUtility.SetObjectReferenceCurve(
-					clip,
-					binding,
-					keyframes
-				);
+				AnimationUtility.SetObjectReferenceCurve(clip, binding, keyframes);
 				states[j] = stateMachine.AddState($"{j}");
 				states[j].motion = clip;
 				states[j].writeDefaultValues = false;
 				context.AddObjectToAsset($"Clip {name} {j}", clip);
 				context.AddObjectToAsset($"State {name} {j}", states[j]);
 			}
+
+			// Each frame state transitions to the next at the end; the last frame state loops back.
 			for (var j = 0; j < states.Length; ++j) {
 				var destination = states[(j+1) % states.Length];
 				var transition = states[j].AddTransition(destination);
@@ -343,9 +356,10 @@ namespace KITTY {
 				transition.duration = 0f;
 				context.AddObjectToAsset($"Transition {name} {j}", transition);
 			}
-			//animationCache[@object.gid & 0x1fffffff] = controller;
+
 			context.AddObjectToAsset($"Controller {name}", controller);
 			context.AddObjectToAsset($"StateMachine {name}", controller.layers[0].stateMachine);
+
 			return controller;
 		}
 	}
