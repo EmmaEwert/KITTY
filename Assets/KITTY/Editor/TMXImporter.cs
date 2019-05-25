@@ -9,6 +9,7 @@ namespace KITTY {
 	using UnityEditor.Experimental.AssetImporters;
 	using UnityEngine;
 	using UnityEngine.Tilemaps;
+	using static UnityEngine.GridLayout;
 
 	///<summary>Tiled TMX tilemap importer.</summary>
 	[ScriptedImporter(1, "tmx", 2)]
@@ -18,324 +19,62 @@ namespace KITTY {
 		///</summary>
 		public override void OnImportAsset(AssetImportContext context) {
 			// Load tilemap TMX and any embedded tilesets, respecting relative paths.
-			var assetName = Path.GetFileNameWithoutExtension(assetPath);
 			var assetDirectory = PathHelper.AssetDirectory(assetPath);
 			var tmx = new TMX(XDocument.Load(assetPath).Element("map"), assetDirectory);
 
-			// Determine what cell layout to use based on tilemap orientation.
-			GridLayout.CellLayout layout;
-			switch (tmx.orientation) {
-				case "orthogonal": layout = GridLayout.CellLayout.Rectangle; break;
-				case "isometric":  layout = GridLayout.CellLayout.Isometric; break;
-				case "hexagonal":  layout = GridLayout.CellLayout.Hexagon;   break;
-				default: throw new NotImplementedException($"Orientation: {tmx.orientation}");
-			}
+			// Parse information from tilemap TMX.
+			var layout = ParseLayout(tmx.orientation);
+			var layers = ParseLayers(layout, tmx.layers);
+			var tiles = ParseTilesets(context, tmx.tilesets, tmx.tilewidth);
 
-			// Build an array of layers, each an array of chunks, each an array of global IDs.
-			var layers = new Layer[tmx.layers.Length];
+			// Generate tilemap grid prefab and layer game objects.
+			var grid = GenerateGrid(context, layout, tmx.tilewidth, tmx.tileheight);
+			var gameObjects = GenerateLayerGameObjects(context, layout, tmx, tiles, layers);
+
+			// Parent the layer game objects to the tilemap grid prefab.
+			foreach (var gameObject in gameObjects) {
+				gameObject.transform.parent = grid.transform;
+			}
+		}
+
+		///<summary>Determine what cell layout to use based on tilemap orientation.</summary>
+		CellLayout ParseLayout(string orientation) {
+			switch (orientation) {
+				case "orthogonal": return CellLayout.Rectangle;
+				case "isometric":  return CellLayout.Isometric;
+				case "hexagonal":  return CellLayout.Hexagon;
+				default: throw new NotImplementedException($"Orientation: {orientation}");
+			}
+		}
+
+		///<summary>
+		///Build an array of layers, each an array of chunks, each an array of global IDs.
+		///</summary>
+		Layer[] ParseLayers(CellLayout layout, TMX.Layer[] tmxLayers) {
+			var layers = new Layer[tmxLayers.Length];
 			for (var i = 0; i < layers.Length; ++i) {
-				layers[i].name = tmx.layers[i].name;
-				layers[i].opacity = tmx.layers[i].opacity;
-				layers[i].chunks = new Layer.Chunk[tmx.layers[i].data.chunks.Length];
+				var tmxLayer = tmxLayers[i];
+				layers[i].name = tmxLayer.name;
+				layers[i].opacity = tmxLayer.opacity;
+				layers[i].chunks = new Layer.Chunk[tmxLayer.data.chunks.Length];
+				layers[i].width = tmxLayer.width;
+				layers[i].height = tmxLayer.height;
 				for (var j = 0; j < layers[i].chunks.Length; ++j) {
+					var chunk = tmxLayer.data.chunks[j];
 					layers[i].chunks[j] = ParseChunk(
-						tmx.layers[i].data.encoding,
-						tmx.layers[i].data.compression,
-						tmx.layers[i].data.chunks[j].value,
-						tmx.layers[i].data.chunks[j].width,
+						tmxLayer.data.encoding,
+						tmxLayer.data.compression,
+						chunk.value,
+						chunk.width,
 						layout
 					);
-					layers[i].chunks[j].width  = tmx.layers[i].data.chunks[j].width;
-					layers[i].chunks[j].height = tmx.layers[i].data.chunks[j].height;
-					layers[i].chunks[j].x      = tmx.layers[i].data.chunks[j].x;
-					layers[i].chunks[j].y      = tmx.layers[i].data.chunks[j].y;
+					layers[i].chunks[j].width  = chunk.width;
+					layers[i].chunks[j].height = chunk.height;
+					layers[i].chunks[j].x      = chunk.x;
+					layers[i].chunks[j].y      = chunk.y;
 				}
 			}
-			
-			// Load tiles in use from all tilesets, pad with `null`s to align global IDs
-			var tileset = new List<Tile> { null }; // Global IDs start from 1
-			foreach (var tsx in tmx.tilesets) {
-				Tileset tsxTileset = null;
-				// Load embedded tileset.
-				if (tsx.source == null) {
-					tsxTileset = TSXImporter.Load(context, tsx);
-				// Load external tileset, respecting relative paths.
-				} else {
-					var tilesetSource = PathHelper.AssetPath(assetDirectory + tsx.source);
-					tsxTileset = AssetDatabase.LoadAssetAtPath<Tileset>(tilesetSource);
-					context.DependsOnSourceAsset(tilesetSource);
-				}
-				// Instantiate all tiles, along with their associated sprites.
-				var gid = tsx.firstgid;
-				foreach (var tsxTile in tsxTileset.tiles) {
-					var tile = tsxTile.Instantiate(tmx.tilewidth);
-					for (var j = 0; j < tile.sprites.Length; ++j) {
-						context.AddObjectToAsset($"Sprite {gid} {j}", tile.sprites[j]);
-					}
-					context.AddObjectToAsset($"Sprite {gid}", tile.sprite);
-					context.AddObjectToAsset($"Tile {gid++}", tile);
-					tileset.Add(tile);
-				}
-			}
-
-			// Instantiate and configure main grid game object.
-			var grid = new GameObject(assetName, typeof(Grid));
-			grid.AddComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Static;
-			grid.isStatic = true;
-			grid.GetComponent<Grid>().cellLayout = layout;
-			grid.GetComponent<Grid>().cellSize =
-				new Vector3(1f, (float)tmx.tileheight / tmx.tilewidth, 1f);
-			context.AddObjectToAsset("Grid", grid);
-			context.SetMainObject(grid);
-			var gridCollider = grid.AddComponent<CompositeCollider2D>();
-			gridCollider.generationType = CompositeCollider2D.GenerationType.Manual;
-
-			// Layers
-			PrefabHelper.cache.Clear();
-			var animationCache = new Dictionary<uint, AnimatorController>();
-			for (var i = 0; i < tmx.layers.Length; ++i) {
-				var layer = layers[i];
-				var tmxLayer = tmx.layers[i];
-				var layerObject = new GameObject(layer.name);
-				layerObject.transform.parent = grid.transform;
-				layerObject.isStatic = true;
-
-				// Object layer
-				foreach (var @object in tmxLayer.objects) {
-					var tile = tileset[(int)(@object.gid & 0x1fffffff)];
-					var properties = Property.Merge(@object.properties, tile?.properties);
-					string icon = null;
-					GameObject gameObject; // Doubles as prefab when object has type
-
-					if (string.IsNullOrEmpty(@object.type)) {
-						// Tile object instantiation when object has no set type, but tile does
-						if (tile?.gameObject) {
-							var name = $"{tile.gameObject.name} {@object.id}";
-							gameObject = Instantiate(tile.gameObject);
-							gameObject.name = name;
-							var components = gameObject.GetComponentsInChildren<MonoBehaviour>();
-							foreach (var component in components) {
-								Property.Apply(properties, component);
-							}
-						// Default instantiation when object has no set type
-						} else {
-							gameObject = new GameObject($"{@object.name} {@object.id}".Trim());
-							icon = "sv_label_0";
-						}
-
-					// Warn instantiation when object has type but no prefab was found
-					// TODO: Consider tile type
-					} else if (null == (gameObject = PrefabHelper.Load(@object.type, context))) {
-						var name = string.IsNullOrEmpty(@object.name) ? @object.type : @object.name;
-						gameObject = new GameObject($"{name} {@object.id}".Trim());
-						icon = "sv_label_6";
-
-					// Prefab instantiation based on object type
-					} else {
-						gameObject = PrefabUtility.InstantiatePrefab(gameObject) as GameObject;
-						gameObject.name = $"{@object.name ?? @object.type} {@object.id}".Trim();
-						var components = gameObject.GetComponentsInChildren<MonoBehaviour>();
-						foreach (var component in components) {
-							Property.Apply(properties, component);
-						}
-					}
-
-					gameObject.transform.parent = layerObject.transform;
-
-					// Object sprite
-					var sprite = tile?.sprite;
-					if (sprite) {
-						var diagonal   = ((@object.gid >> 29) & 1) == 1 ? true : false;
-						var vertical   = ((@object.gid >> 30) & 1) == 1 ? true : false;
-						var horizontal = ((@object.gid >> 31) & 1) == 1 ? true : false;
-						// Transform
-						gameObject.transform.localRotation *=
-							Quaternion.Euler(0f, 0f, -@object.rotation)
-							* Quaternion.Euler(vertical ? 180f : 0f, horizontal ? 180f : 0f, 0f);
-						gameObject.transform.localPosition = new Vector3(
-							@object.x / tmx.tilewidth,
-							-@object.y / tmx.tileheight + tmx.height
-						);
-						if (horizontal) {
-							gameObject.transform.position -=
-								gameObject.transform.right * @object.width / tmx.tilewidth;
-						}
-						if (vertical) {
-							gameObject.transform.position -=
-								gameObject.transform.up * @object.height / tmx.tileheight;
-						}
-						var localPosition = new Vector3(
-							@object.width / tmx.tilewidth / 2f,
-							@object.height / tmx.tileheight / 2f
-						);
-						// Renderer
-						var renderer = new GameObject("Renderer").AddComponent<SpriteRenderer>();
-						renderer.transform.SetParent(gameObject.transform);
-						renderer.transform.localPosition = localPosition;
-						renderer.transform.localRotation = Quaternion.identity;
-						renderer.sprite = sprite;
-						renderer.sortingOrder = i;
-						renderer.spriteSortPoint = SpriteSortPoint.Pivot;
-						renderer.drawMode = SpriteDrawMode.Sliced; // HACK: Makes renderer.size work
-						renderer.size = new Vector2(@object.width, @object.height) / tmx.tilewidth;
-						renderer.color = new Color(1f, 1f, 1f, layer.opacity);
-						// Collider
-						if (tile.colliderType == UnityEngine.Tilemaps.Tile.ColliderType.Sprite) {
-							var shapeCount = sprite.GetPhysicsShapeCount();
-							for (var j = 0; j < shapeCount; ++j) {
-								var points = new List<Vector2>();
-								sprite.GetPhysicsShape(j, points);
-								var collider = new GameObject($"Collider {j}");
-								collider.transform.SetParent(gameObject.transform);
-								collider.transform.localPosition = localPosition;
-								collider.transform.localRotation = Quaternion.identity;
-								collider.AddComponent<PolygonCollider2D>().points =
-									points.ToArray();
-							}
-						}
-						// Animation
-						if (tile.sprites.Length > 1) {
-							if (!animationCache.TryGetValue(
-								@object.gid & 0x1fffffff, out var controller
-							)) {
-								controller = new AnimatorController();
-								controller.name = $"{@object.gid}";
-								controller.AddLayer("Base Layer");
-								controller.layers[0].stateMachine = new AnimatorStateMachine();
-								controller.hideFlags = HideFlags.HideInHierarchy;
-								var stateMachine = controller.layers[0].stateMachine;
-								var binding = new EditorCurveBinding {
-									type = typeof(SpriteRenderer),
-									path = "",
-									propertyName = "m_Sprite",
-								};
-								var states = new AnimatorState[tile.sprites.Length];
-								for (var j = 0; j < states.Length; ++j) {
-									var clip = new AnimationClip();
-									clip.frameRate = 1000f / tile.duration;
-									clip.name = $"{@object.gid} {j}";
-									clip.hideFlags = HideFlags.HideInHierarchy;
-									var keyframes = new [] {
-										new ObjectReferenceKeyframe {
-											time = 0,
-											value = tile.sprites[j],
-										}
-									};
-									AnimationUtility.SetObjectReferenceCurve(
-										clip,
-										binding,
-										keyframes
-									);
-									states[j] = stateMachine.AddState($"{j}");
-									states[j].motion = clip;
-									states[j].writeDefaultValues = false;
-									context.AddObjectToAsset($"Clip {@object.gid} {j}", clip);
-									context.AddObjectToAsset($"State {@object.gid} {j}", states[j]);
-								}
-								for (var j = 0; j < states.Length; ++j) {
-									var destination = states[(j+1) % states.Length];
-									var transition = states[j].AddTransition(destination);
-									transition.hasExitTime = true;
-									transition.exitTime = 1f;
-									transition.duration = 0f;
-									context.AddObjectToAsset(
-										$"Transition {@object.gid} {j}",
-										transition
-									);
-								}
-								animationCache[@object.gid & 0x1fffffff] = controller;
-								context.AddObjectToAsset($"Controller {@object.gid}", controller);
-								context.AddObjectToAsset(
-									$"StateMachine {@object.gid}",
-									controller.layers[0].stateMachine
-								);
-							}
-							var animator = renderer.gameObject.AddComponent<Animator>();
-							animator.runtimeAnimatorController = controller;
-						}
-					} else {
-						gameObject.transform.localPosition = new Vector3(
-							@object.x / tmx.tilewidth,
-							-@object.y / tmx.tileheight
-								+ tmx.height
-								- @object.height / tmx.tileheight
-						);
-					}
-
-					// Icon
-					if (icon != null) {
-						InternalEditorGUIHelper.SetIconForObject(
-							gameObject,
-							EditorGUIUtility.IconContent(icon).image
-						);
-					}
-				}
-
-				if (layer.chunks.Length == 0) { continue; }
-				
-				// Tile layer
-				var tilemap = layerObject.AddComponent<Tilemap>();
-				var renderer = layerObject.AddComponent<TilemapRenderer>();
-				layerObject.AddComponent<TilemapCollider2D>().usedByComposite = true;
-				tilemap.color = new Color(1f, 1f, 1f, layer.opacity);
-				if (layout == GridLayout.CellLayout.Hexagon) {
-					tilemap.orientation = Tilemap.Orientation.Custom;
-					tilemap.orientationMatrix = Matrix4x4.TRS(
-						Vector3.zero,
-						Quaternion.Euler(0f, 180f, 180f),
-						Vector3.one
-					);
-					tilemap.transform.localScale = new Vector3(1f, -1f, 1f);
-				}
-				// Chunks
-				for (var j = 0; j < layer.chunks.Length; ++j) {
-					var chunk = layer.chunks[j];
-					var tiles = new Tile[chunk.gids.Length];
-					for (var k = 0; k < tiles.Length; ++k) {
-						// 3 MSB are for flipping
-						tiles[k] = tileset[(int)(chunk.gids[k] & 0x1ffffff)];
-					}
-					var position = new Vector3Int(
-						chunk.x,
-						layer.height - chunk.height - chunk.y,
-						0
-					);
-					var size = new Vector3Int(chunk.width, chunk.height, 1);
-					var bounds = new BoundsInt(position, size);
-					tilemap.SetTilesBlock(bounds, tiles);
-					// Flipped tiles
-					for (var k = 0; k < chunk.gids.Length; ++k) {
-						var gid = chunk.gids[k];
-						var diagonal   = (gid >> 29) & 1;
-						var vertical   = (gid >> 30) & 1;
-						var horizontal = (gid >> 31) & 1;
-						var flips = new Vector4(diagonal, vertical, horizontal, 0);
-						if (flips.sqrMagnitude == 0f) { continue; }
-						var tilePosition = new Vector3Int(
-							layer.width - chunk.width + chunk.x
-								+ k % chunk.width + chunk.x,
-							layer.height - chunk.height - chunk.y
-								+ k / chunk.width - chunk.y,
-							0
-						);
-						var transform = Matrix4x4.TRS(
-							Vector3.zero,
-							Quaternion.AngleAxis(diagonal * 180, new Vector3(1, 1, 0)),
-							Vector3.one - (diagonal == 1
-								? new Vector3(flips.y, flips.z, flips.w)
-								: new Vector3(flips.z, flips.y, flips.w)
-							) * 2
-						);
-						tilemap.SetTransformMatrix(tilePosition, transform);
-					}
-				}
-				renderer.sortingOrder = i;
-				renderer.sortOrder = layout == GridLayout.CellLayout.Hexagon
-					? TilemapRenderer.SortOrder.BottomLeft
-					: TilemapRenderer.SortOrder.TopLeft;
-			}
-
-			gridCollider.generationType = CompositeCollider2D.GenerationType.Synchronous;
+			return layers;
 		}
 
 		///<summary>Decode, decompress, and reorder rows of global tile IDs</summary>
@@ -344,16 +83,15 @@ namespace KITTY {
 			string compression,
 			string data,
 			int width,
-			GridLayout.CellLayout layout
+			CellLayout layout
 		) {
-			// Decoding
+			// Decode
 			byte[] input;
 			switch (encoding) {
 				case "base64": input = Convert.FromBase64String(data); break;
 				default: throw new NotImplementedException("Encoding: " + (encoding ?? "xml"));
 			}
-
-			// Decompression
+			// Decompress
 			byte[] output;
 			switch (compression) {
 				case null:   output = input;             break;
@@ -361,19 +99,374 @@ namespace KITTY {
 				case "zlib": output = CompressionHelper.DecompressZlib(input); break;
 				default: throw new NotImplementedException("Compression: " + compression);
 			}
-
-			// Parse bytes as uint32 gids
+			// Parse bytes as uint32 gids, reordered according to cell layout.
 			var gids = new uint[output.Length / 4];
 			Buffer.BlockCopy(output, 0, gids, 0, output.Length);
-			if (layout == GridLayout.CellLayout.Rectangle) {
-				return new Layer.Chunk { gids = ArrayHelper.Reverse(gids, stride: width) };
-			} else if (layout == GridLayout.CellLayout.Isometric) {
-				return new Layer.Chunk {
+			switch (layout) {
+				case CellLayout.Rectangle: return new Layer.Chunk {
+					gids = ArrayHelper.Reverse(gids, stride: width)
+				};
+				case CellLayout.Isometric: return new Layer.Chunk {
 					gids = ArrayHelper.Swizzle(gids, stride: width).Reverse().ToArray()
 				};
-			} else {
-				return new Layer.Chunk { gids = gids };
+				case CellLayout.Hexagon: return new Layer.Chunk { gids = gids };
+				default: throw new NotImplementedException($"Layout: {layout}");
 			}
+		}
+
+		///<summary>Load tiles from all tilesets.</summary>
+		List<Tile> ParseTilesets(AssetImportContext context, TSX[] tilesets, int tilewidth) {
+			var tiles = new List<Tile> { null }; // Global IDs start from 1
+			foreach (var tsx in tilesets) {
+				var tileset = ParseTileset(context, tsx);
+				for (var i = 0; i < tileset.tiles.Length; ++i) {
+					var gid = tsx.firstgid + i;
+					var tile = tileset.tiles[i].Instantiate(tilewidth);
+					tiles.Add(tile);
+					if (!tile) { continue; }
+					context.AddObjectToAsset($"Tile {gid}", tile);
+					if (!tile.sprite) { continue; }
+					context.AddObjectToAsset($"Sprite {gid}", tile.sprite);
+					for (var j = 0; j < tile.sprites.Length; ++j) {
+						context.AddObjectToAsset($"Sprite {gid} {j}", tile.sprites[j]);
+					}
+				}
+			}
+			return tiles;
+		}
+
+		///<summary>Load embedded or external tileset.</summary>
+		Tileset ParseTileset(AssetImportContext context, TSX tsx) {
+			// Load embedded tileset.
+			if (tsx.source == null) {
+				return TSXImporter.Load(context, tsx);
+			// Load external tileset, respecting relative paths.
+			} else {
+				var source = PathHelper.AssetPath(
+					Path.GetDirectoryName(assetPath) +
+					Path.DirectorySeparatorChar +
+					tsx.source
+				);
+				context.DependsOnSourceAsset(source);
+				return AssetDatabase.LoadAssetAtPath<Tileset>(source);
+			}
+		}
+
+		///<summary>Instantiate and configure main grid game object.</summary>
+		GameObject GenerateGrid(
+			AssetImportContext context,
+			CellLayout layout,
+			int tilewidth,
+			int tileheight
+		) {
+			var grid = new GameObject(Path.GetFileNameWithoutExtension(context.assetPath));
+			grid.AddComponent<Grid>().cellLayout = layout;
+			grid.GetComponent<Grid>().cellSize = new Vector3(1f, (float)tileheight / tilewidth, 1f);
+			grid.AddComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Static;
+			grid.AddComponent<CompositeCollider2D>();
+			grid.isStatic = true;
+			context.AddObjectToAsset("Grid", grid);
+			context.SetMainObject(grid);
+			return grid;
+		}
+
+		GameObject[] GenerateLayerGameObjects(
+			AssetImportContext context,
+			CellLayout layout,
+			TMX tmx,
+			List<Tile> tiles,
+			Layer[] layers
+		) {
+			PrefabHelper.cache.Clear();
+			var animators = new Dictionary<uint, AnimatorController>();
+			var layerObjects = new GameObject[layers.Length];
+			for (var i = 0; i < tmx.layers.Length; ++i) {
+				var layer = layers[i];
+				var tmxLayer = tmx.layers[i];
+				var layerObject = new GameObject(layer.name);
+				layerObject.isStatic = true;
+				layerObjects[i] = layerObject;
+				if (layer.chunks.Length > 0) {
+					GenerateTilemapLayer(tiles, layer, layerObject, sortingOrder: i, layout);
+				} else {
+					GenerateObjectLayer(
+						context,
+						tiles,
+						layerObject,
+						tmx,
+						tmxLayer.objects,
+						layer.opacity,
+						sortingOrder: i,
+						animators
+					);
+				}
+
+			}
+			return layerObjects;
+		}
+
+		///<summary>Add and configure tilemap component for layer.</summary>
+		private void GenerateTilemapLayer(
+			List<Tile> tiles,
+			Layer layer,
+			GameObject layerObject,
+			int sortingOrder,
+			CellLayout layout
+		) {
+			var tilemap = layerObject.AddComponent<UnityEngine.Tilemaps.Tilemap>();
+			var tilemapRenderer = layerObject.AddComponent<TilemapRenderer>();
+			layerObject.AddComponent<TilemapCollider2D>().usedByComposite = true;
+			tilemap.color = new Color(1f, 1f, 1f, layer.opacity);
+			if (layout == CellLayout.Hexagon) {
+				tilemap.orientation = UnityEngine.Tilemaps.Tilemap.Orientation.Custom;
+				tilemap.orientationMatrix = Matrix4x4.TRS(
+					Vector3.zero,
+					Quaternion.Euler(0f, 180f, 180f),
+					Vector3.one
+				);
+				tilemap.transform.localScale = new Vector3(1f, -1f, 1f);
+			}
+
+			// Chunks
+			for (var j = 0; j < layer.chunks.Length; ++j) {
+				var chunk = layer.chunks[j];
+				var chunkTiles = new Tile[chunk.gids.Length];
+				for (var k = 0; k < chunkTiles.Length; ++k) {
+					// 3 MSB are for flipping
+					chunkTiles[k] = tiles[(int)(chunk.gids[k] & 0x1ffffff)];
+				}
+				var position = new Vector3Int(
+					chunk.x,
+					layer.height - chunk.height - chunk.y,
+					0
+				);
+				var size = new Vector3Int(chunk.width, chunk.height, 1);
+				var bounds = new BoundsInt(position, size);
+				tilemap.SetTilesBlock(bounds, chunkTiles);
+
+				// Flipped tiles
+				for (var k = 0; k < chunk.gids.Length; ++k) {
+					var gid = chunk.gids[k];
+					var diagonal   = (gid >> 29) & 1;
+					var vertical   = (gid >> 30) & 1;
+					var horizontal = (gid >> 31) & 1;
+					var flips = new Vector4(diagonal, vertical, horizontal, 0);
+					if (flips.sqrMagnitude == 0f) { continue; }
+					var tilePosition = new Vector3Int(
+						layer.width  - chunk.width  + chunk.x + k % chunk.width + chunk.x,
+						layer.height - chunk.height - chunk.y + k / chunk.width - chunk.y,
+						0
+					);
+					var transform = Matrix4x4.TRS(
+						Vector3.zero,
+						Quaternion.AngleAxis(diagonal * 180, new Vector3(1, 1, 0)),
+						Vector3.one - (diagonal == 1
+							? new Vector3(flips.y, flips.z, flips.w)
+							: new Vector3(flips.z, flips.y, flips.w)
+						) * 2
+					);
+					tilemap.SetTransformMatrix(tilePosition, transform);
+				}
+			}
+			tilemapRenderer.sortingOrder = sortingOrder;
+			tilemapRenderer.sortOrder = layout == CellLayout.Hexagon
+				? TilemapRenderer.SortOrder.BottomLeft
+				: TilemapRenderer.SortOrder.TopLeft;
+		}
+
+		///<summary>Generate a game object for each Tiled object in layer.</summary>
+		private void GenerateObjectLayer(
+			AssetImportContext context,
+			List<Tile> tiles,
+			GameObject layerObject,
+			TMX tmx,
+			TMX.Layer.Object[] objects,
+			float opacity,
+			int sortingOrder,
+			Dictionary<uint, AnimatorController> animators
+		) {
+			// Object layer
+			foreach (var @object in objects) {
+				var tile = tiles[(int)(@object.gid & 0x1fffffff)];
+				var sprite = tile?.sprite;
+				var gameObject = GenerateGameObject(context, @object, tile);
+
+				// Transform
+				gameObject.transform.parent = layerObject.transform;
+				gameObject.transform.localPosition = new Vector3(
+					@object.x / tmx.tilewidth,
+					-@object.y / tmx.tileheight + tmx.height
+				);
+				gameObject.transform.localRotation *=
+					Quaternion.Euler(0f, 0f, -@object.rotation);
+
+				// Non-tile-based object
+				if (!sprite) {
+					gameObject.transform.localPosition +=
+						Vector3.down * @object.height / tmx.tileheight;
+					continue;
+				}
+
+				// Tile-based object
+				// Flips
+				var diagonal   = ((@object.gid >> 29) & 1) == 1;
+				var vertical   = ((@object.gid >> 30) & 1) == 1;
+				var horizontal = ((@object.gid >> 31) & 1) == 1;
+
+				// Transform
+				gameObject.transform.localRotation *=
+					Quaternion.Euler(vertical ? 180f : 0f, horizontal ? 180f : 0f, 0f);
+				if (horizontal) {
+					gameObject.transform.localPosition -=
+						gameObject.transform.right * @object.width / tmx.tilewidth;
+				}
+				if (vertical) {
+					gameObject.transform.localPosition -=
+						gameObject.transform.up * @object.height / tmx.tileheight;
+				}
+				var childPosition = new Vector3(
+					@object.width / tmx.tilewidth / 2f,
+					@object.height / tmx.tileheight / 2f
+				);
+
+				// Renderer
+				var renderer = new GameObject("Renderer").AddComponent<SpriteRenderer>();
+				renderer.transform.SetParent(gameObject.transform);
+				renderer.transform.localPosition = childPosition;
+				renderer.transform.localRotation = Quaternion.identity;
+				renderer.sprite = sprite;
+				renderer.sortingOrder = sortingOrder;
+				renderer.spriteSortPoint = SpriteSortPoint.Pivot;
+				renderer.drawMode = SpriteDrawMode.Sliced; // HACK: Makes renderer.size work
+				renderer.size = new Vector2(@object.width, @object.height) / tmx.tilewidth;
+				renderer.color = new Color(1f, 1f, 1f, opacity);
+
+				// Collider
+				if (tile.colliderType == UnityEngine.Tilemaps.Tile.ColliderType.Sprite) {
+					var shapeCount = sprite.GetPhysicsShapeCount();
+					for (var j = 0; j < shapeCount; ++j) {
+						var points = new List<Vector2>();
+						sprite.GetPhysicsShape(j, points);
+						var collider = new GameObject($"Collider {j}");
+						collider.transform.SetParent(gameObject.transform);
+						collider.transform.localPosition = childPosition;
+						collider.transform.localRotation = Quaternion.identity;
+						collider.AddComponent<PolygonCollider2D>().points =
+							points.ToArray();
+					}
+				}
+
+				// Animator
+				if (tile.sprites.Length > 1) {
+					if (!animators.TryGetValue(@object.gid & 0x1fffffff, out var controller)) {
+						controller = GenerateAnimatorController(context, @object.gid, tile);
+						animators[@object.gid & 0x1fffffff] = controller;
+					}
+					var animator = renderer.gameObject.AddComponent<Animator>();
+					animator.runtimeAnimatorController = controller;
+				}
+			}
+		}
+
+		///<summary>Load or generate GameObject based on object or tile type, if any.</summary>
+		GameObject GenerateGameObject(AssetImportContext context, TMX.Layer.Object @object, Tile tile) {
+			GameObject gameObject;
+			var properties = Property.Merge(@object.properties, tile?.properties);
+			var icon = string.Empty;
+
+			if (string.IsNullOrEmpty(@object.type)) {
+				// Tile object instantiation when object has no set type, but tile does
+				if (tile?.gameObject) {
+					var name = $"{tile.gameObject.name} {@object.id}";
+					gameObject = Instantiate(tile.gameObject);
+					gameObject.name = name;
+					var components = gameObject.GetComponentsInChildren<MonoBehaviour>();
+					foreach (var component in components) {
+						Property.Apply(properties, component);
+					}
+				// Default instantiation when object has no set type
+				} else {
+					gameObject = new GameObject($"{@object.name} {@object.id}".Trim());
+					icon = "sv_label_0";
+				}
+
+			// Warn instantiation when object has type but no prefab was found
+			// TODO: Consider tile type
+			} else if (null == (gameObject = PrefabHelper.Load(@object.type, context))) {
+				var name = string.IsNullOrEmpty(@object.name) ? @object.type : @object.name;
+				gameObject = new GameObject($"{name} {@object.id}".Trim());
+				icon = "sv_label_6";
+
+			// Prefab instantiation based on object type
+			} else {
+				gameObject = PrefabUtility.InstantiatePrefab(gameObject) as GameObject;
+				gameObject.name = $"{@object.name ?? @object.type} {@object.id}".Trim();
+				var components = gameObject.GetComponentsInChildren<MonoBehaviour>();
+				foreach (var component in components) {
+					Property.Apply(properties, component);
+				}
+			}
+
+			// Icon
+			if (!string.IsNullOrEmpty(icon)) {
+				InternalEditorGUIHelper.SetIconForObject(
+					gameObject,
+					EditorGUIUtility.IconContent(icon).image
+				);
+			}
+
+			return gameObject;
+		}
+
+		///<summary>Generate animator controller for objects based on animated tiles.</summary>
+		AnimatorController GenerateAnimatorController(AssetImportContext context, uint gid, Tile tile) {
+			var controller = new AnimatorController();
+			var name = $"{gid}";
+			controller.name = name;
+			controller.AddLayer("Base Layer");
+			controller.layers[0].stateMachine = new AnimatorStateMachine();
+			controller.hideFlags = HideFlags.HideInHierarchy;
+			var stateMachine = controller.layers[0].stateMachine;
+			var binding = new EditorCurveBinding {
+				type = typeof(SpriteRenderer),
+				path = "",
+				propertyName = "m_Sprite",
+			};
+			var states = new AnimatorState[tile.sprites.Length];
+			for (var j = 0; j < states.Length; ++j) {
+				var clip = new AnimationClip();
+				clip.frameRate = 1000f / tile.duration;
+				clip.name = $"{name} {j}";
+				clip.hideFlags = HideFlags.HideInHierarchy;
+				var keyframes = new [] {
+					new ObjectReferenceKeyframe {
+						time = 0,
+						value = tile.sprites[j],
+					}
+				};
+				AnimationUtility.SetObjectReferenceCurve(
+					clip,
+					binding,
+					keyframes
+				);
+				states[j] = stateMachine.AddState($"{j}");
+				states[j].motion = clip;
+				states[j].writeDefaultValues = false;
+				context.AddObjectToAsset($"Clip {name} {j}", clip);
+				context.AddObjectToAsset($"State {name} {j}", states[j]);
+			}
+			for (var j = 0; j < states.Length; ++j) {
+				var destination = states[(j+1) % states.Length];
+				var transition = states[j].AddTransition(destination);
+				transition.hasExitTime = true;
+				transition.exitTime = 1f;
+				transition.duration = 0f;
+				context.AddObjectToAsset($"Transition {name} {j}", transition);
+			}
+			//animationCache[@object.gid & 0x1fffffff] = controller;
+			context.AddObjectToAsset($"Controller {name}", controller);
+			context.AddObjectToAsset($"StateMachine {name}", controller.layers[0].stateMachine);
+			return controller;
 		}
 
 		struct Layer {

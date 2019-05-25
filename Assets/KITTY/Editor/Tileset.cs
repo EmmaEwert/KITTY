@@ -36,8 +36,10 @@ namespace KITTY {
 				tile.hideFlags = HideFlags.HideInHierarchy;
 				tile.name = "Tile";
 				tile.transform = Matrix4x4.identity;
-				tile.sprite.hideFlags = HideFlags.HideInHierarchy;
-				tile.sprite.name = "Sprite";
+				if (tile.sprite) {
+					tile.sprite.hideFlags = HideFlags.HideInHierarchy;
+					tile.sprite.name = "Sprite";
+				}
 				if (frames.Length > 0) {
 					var sprites = new Sprite[frames.Length];
 					// TODO: Support image collection tileset animation
@@ -67,7 +69,7 @@ namespace KITTY {
 					tile.sprites = new Sprite[0];
 				}
 				if (objects?.Length > 0) {
-					tile.sprite.OverridePhysicsShape(objects.Select(s => s.points).ToList());
+					tile.sprite?.OverridePhysicsShape(objects.Select(s => s.points).ToList());
 					// TODO: Grid collidertype when the collider is a single full rect
 					tile.colliderType = UnityEngine.Tilemaps.Tile.ColliderType.Sprite;
 				} else {
