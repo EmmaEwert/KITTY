@@ -115,7 +115,7 @@ namespace KITTY {
 		}
 
 		///<summary>Load tiles from all tilesets.</summary>
-		List<Tile> ParseTilesets(AssetImportContext context, TSX[] tilesets, int tilewidth) {
+		Tile[] ParseTilesets(AssetImportContext context, TSX[] tilesets, int tilewidth) {
 			var tiles = new List<Tile> { null }; // Global IDs start from 1
 			foreach (var tsx in tilesets) {
 				var tileset = ParseTileset(context, tsx);
@@ -132,7 +132,7 @@ namespace KITTY {
 					}
 				}
 			}
-			return tiles;
+			return tiles.ToArray();
 		}
 
 		///<summary>Load embedded or external tileset.</summary>
@@ -170,11 +170,12 @@ namespace KITTY {
 			return grid;
 		}
 
+		///<summary>Generate gameobjects for each layer</summary>
 		GameObject[] GenerateLayerGameObjects(
 			AssetImportContext context,
 			CellLayout layout,
 			TMX tmx,
-			List<Tile> tiles,
+			Tile[] tiles,
 			Layer[] layers
 		) {
 			PrefabHelper.cache.Clear();
@@ -207,7 +208,7 @@ namespace KITTY {
 
 		///<summary>Add and configure tilemap component for layer.</summary>
 		private void GenerateTilemapLayer(
-			List<Tile> tiles,
+			Tile[] tiles,
 			Layer layer,
 			GameObject layerObject,
 			int sortingOrder,
@@ -250,19 +251,18 @@ namespace KITTY {
 					var diagonal   = (gid >> 29) & 1;
 					var vertical   = (gid >> 30) & 1;
 					var horizontal = (gid >> 31) & 1;
-					var flips = new Vector4(diagonal, vertical, horizontal, 0);
-					if (flips.sqrMagnitude == 0f) { continue; }
+					if (diagonal + vertical + horizontal == 0f) { continue; }
 					var tilePosition = new Vector3Int(
-						layer.width  - chunk.width  + chunk.x + k % chunk.width + chunk.x,
-						layer.height - chunk.height - chunk.y + k / chunk.width - chunk.y,
+						layer.width  - chunk.width  + chunk.x + k % chunk.width,
+						layer.height - chunk.height - chunk.y + k / chunk.width,
 						0
 					);
 					var transform = Matrix4x4.TRS(
-						Vector3.zero,
-						Quaternion.AngleAxis(diagonal * 180, new Vector3(1, 1, 0)),
+						pos: Vector3.zero,
+						Quaternion.AngleAxis(diagonal * 180, new Vector3(-1, 1, 0)),
 						Vector3.one - (diagonal == 1
-							? new Vector3(flips.y, flips.z, flips.w)
-							: new Vector3(flips.z, flips.y, flips.w)
+							? new Vector3(vertical, horizontal)
+							: new Vector3(horizontal, vertical)
 						) * 2
 					);
 					tilemap.SetTransformMatrix(tilePosition, transform);
@@ -277,7 +277,7 @@ namespace KITTY {
 		///<summary>Generate a game object for each Tiled object in layer.</summary>
 		private void GenerateObjectLayer(
 			AssetImportContext context,
-			List<Tile> tiles,
+			Tile[] tiles,
 			GameObject layerObject,
 			TMX tmx,
 			TMX.Layer.Object[] objects,
