@@ -145,19 +145,40 @@ namespace KITTY {
 
 				var position = chunkPosition + new Vector3Int(k % chunk.width, k / chunk.width, 0);
 				var rotation = Quaternion.identity;
-				var scale = Vector3.one;
 
-				// Scaling a tile transform by a negative amount effectively flips it.
-				// If it's also flipped diagonally, vertical and horizontal scales are swapped.
-				if (diagonal == 1) {
-					rotation = Quaternion.AngleAxis(180f, new Vector3(-1f, 1f, 0f));
-					scale -= new Vector3(vertical, horizontal) * 2f;
-				} else {
-					scale -= new Vector3(horizontal, vertical) * 2f;
+				// Flip tiles along X, Y, and diagonally based on the flip flags.
+				if (vertical == 1) {
+					rotation *= Quaternion.Euler(180f, 0f, 0f);
 				}
-
-				var transform = Matrix4x4.TRS(pos: Vector3.zero, rotation, scale);
+				if (horizontal == 1) {
+					rotation *= Quaternion.Euler(0f, 180f, 0f);
+				}
+				if (diagonal == 1) {
+					rotation *= Quaternion.AngleAxis(180f, new Vector3(-1f, 1f, 0f));
+				}
+				var transform = Matrix4x4.TRS(pos: Vector3.zero, rotation, s: Vector3.one);
 				tilemap.SetTransformMatrix(position, transform);
+
+				// Since a tile's GameObject is instantiated automatically before we have a chance
+				// to set the tile transform, pivotal positioning and rotation needs to happen
+				// outside of the tile's StartUp method.
+				var gameObject = tilemap.GetInstantiatedObject(position);
+				if (gameObject) {
+					if (vertical == 1) {
+						gameObject.transform.localRotation *= Quaternion.Euler(180f, 0f, 0f);
+						gameObject.transform.localPosition -= gameObject.transform.up;
+					}
+					if (horizontal == 1) {
+						gameObject.transform.localRotation *= Quaternion.Euler(0f, 180f, 0f);
+						gameObject.transform.localPosition -= gameObject.transform.right;
+					}
+					if (diagonal == 1) {
+						gameObject.transform.localRotation *=
+							Quaternion.AngleAxis(180f, new Vector3(-1f, 1f, 0f));
+						gameObject.transform.localPosition -= gameObject.transform.up;
+						gameObject.transform.localPosition -= gameObject.transform.right;
+					}
+				}
 			}
 		}
 
