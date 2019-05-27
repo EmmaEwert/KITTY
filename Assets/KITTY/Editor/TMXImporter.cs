@@ -342,7 +342,6 @@ namespace KITTY {
 			if (gameObject != null) {
 				// Apply properties to all behaviours.
 				gameObject.name = name;
-				Debug.Log(name);
 				var components = gameObject.GetComponentsInChildren<MonoBehaviour>();
 				foreach (var component in components) {
 					Property.Apply(properties, component);
@@ -378,6 +377,18 @@ namespace KITTY {
 			controller.AddLayer("Base Layer");
 			controller.layers[0].stateMachine = new AnimatorStateMachine();
 			controller.hideFlags = HideFlags.HideInHierarchy;
+			var startParameter = new AnimatorControllerParameter {
+				name = "Start",
+				type = AnimatorControllerParameterType.Int,
+				defaultInt = 0,
+			};
+			var endParameter = new AnimatorControllerParameter {
+				name = "End",
+				type = AnimatorControllerParameterType.Int,
+				defaultInt = tile.sprites.Length - 1,
+			};
+			controller.AddParameter(startParameter);
+			controller.AddParameter(endParameter);
 			var stateMachine = controller.layers[0].stateMachine;
 			var binding = new EditorCurveBinding {
 				type = typeof(SpriteRenderer),
@@ -403,14 +414,45 @@ namespace KITTY {
 				context.AddObjectToAsset($"State {name} {j}", states[j]);
 			}
 
-			// Each frame state transitions to the next at the end; the last frame state loops back.
+			// By default, each frame state transitions to the next at the end; the last frame state
+			// loops back.
+			// TODO: Avoid repeating frames of constant duration for variable-framerate animations.
 			for (var j = 0; j < states.Length; ++j) {
-				var destination = states[(j+1) % states.Length];
-				var transition = states[j].AddTransition(destination);
-				transition.hasExitTime = true;
-				transition.exitTime = 1f;
-				transition.duration = 0f;
-				context.AddObjectToAsset($"Transition {name} {j}", transition);
+				// Forward; keep going so long as the current state isn't the end.
+				if (j < states.Length - 1) {
+					var destination = states[(j+1) % states.Length];
+					var transition = states[j].AddTransition(destination);
+					transition.hasExitTime = true;
+					transition.exitTime = 1f;
+					transition.duration = 0f;
+					transition.interruptionSource = TransitionInterruptionSource.Destination;
+					transition.AddCondition(AnimatorConditionMode.Less, j + 1, "Start");
+					transition.AddCondition(AnimatorConditionMode.Greater, j, "End");
+					context.AddObjectToAsset($"Transition {name} {j}", transition);
+				}
+				for (var k = 0; k <= j; ++k) {
+					// Back; go back to start if we're at the end.
+					var destination = states[k];
+					var transition = states[j].AddTransition(destination);
+					transition.hasExitTime = true;
+					transition.exitTime = 1f;
+					transition.duration = 0f;
+					transition.interruptionSource = TransitionInterruptionSource.Destination;
+					transition.AddCondition(AnimatorConditionMode.Equals, k, "Start");
+					transition.AddCondition(AnimatorConditionMode.Less, j + 1, "End");
+					context.AddObjectToAsset($"Transition Back {name} {j} {k}", transition);
+				}
+				for (var k = j + 1; k < states.Length; ++k) {
+					// Skip; skip ahead if we're behind start.
+					var destination = states[k];
+					var transition = states[j].AddTransition(destination);
+					transition.hasExitTime = false;
+					transition.duration = 0f;
+					transition.interruptionSource = TransitionInterruptionSource.Destination;
+					transition.AddCondition(AnimatorConditionMode.Equals, k, "Start");
+					transition.AddCondition(AnimatorConditionMode.Greater, j, "Start");
+					context.AddObjectToAsset($"Transition Skip {name} {j} {k}", transition);
+				}
 			}
 
 			context.AddObjectToAsset($"Controller {name}", controller);
