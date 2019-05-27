@@ -110,6 +110,7 @@ namespace KITTY {
 				var bounds = new BoundsInt(position, size);
 				tilemap.SetTilesBlock(bounds, GetTiles(map, layer, chunk));
 				FlipTiles(tilemap, layer, chunk);
+				CreateTileObjects(map, layer, chunk, layerObject);
 			}
 
 			return layerObject;
@@ -158,12 +159,41 @@ namespace KITTY {
 				}
 				var transform = Matrix4x4.TRS(pos: Vector3.zero, rotation, s: Vector3.one);
 				tilemap.SetTransformMatrix(position, transform);
+			}
+		}
 
-				// Since a tile's GameObject is instantiated automatically before we have a chance
-				// to set the tile transform, pivotal positioning and rotation needs to happen
-				// outside of the tile's StartUp method.
-				var gameObject = tilemap.GetInstantiatedObject(position);
+		///<summary>
+		///Create a GameObject for each Tile with a defined type, thus prefab.
+		///</summary>
+		static void CreateTileObjects(
+			Map map,
+			Map.Layer layer,
+			Map.Layer.Chunk chunk,
+			GameObject layerObject
+		) {
+			var chunkPosition = new Vector3Int(chunk.x, layer.height - chunk.height - chunk.y, 0);
+
+			for (var k = 0; k < chunk.gids.Length; ++k) {
+				var gid = chunk.gids[k];
+				var tile = map.tiles[gid & 0x1ffffff];
+				if (!tile?.prefab) { continue; }
+
+				// The 3 most significant bits indicate in what way the tile should be flipped.
+				var diagonal   = (gid >> 29) & 1;
+				var vertical   = (gid >> 30) & 1;
+				var horizontal = (gid >> 31) & 1;
+
+				var position = chunkPosition + new Vector3Int(k % chunk.width, k / chunk.width, 0);
+
+				// Since a tile's GameObject is instantiated automatically in Edit Mode and *again*
+				// in Play Mode, we can't use the built in approach, and instead have to
+				// handle instantiation ourselves to avoid duplicate GameObjects.
+				var gameObject = PrefabUtility.InstantiatePrefab(
+					tile.prefab, layerObject.transform
+				) as GameObject;
 				if (gameObject) {
+					gameObject.name += $" {position.x},{position.y}";
+					gameObject.transform.localPosition = position;
 					if (vertical == 1) {
 						gameObject.transform.localRotation *= Quaternion.Euler(180f, 0f, 0f);
 						gameObject.transform.localPosition -= gameObject.transform.up;
@@ -178,9 +208,13 @@ namespace KITTY {
 						gameObject.transform.localPosition -= gameObject.transform.up;
 						gameObject.transform.localPosition -= gameObject.transform.right;
 					}
+					foreach (var component in gameObject.GetComponentsInChildren<MonoBehaviour>()) {
+						Property.Apply(tile.properties, component);
+					}
 				}
 			}
 		}
+		
 
 		///<summary>
 		///Create a GameObject for each Tiled object in layer.
@@ -282,7 +316,7 @@ namespace KITTY {
 			TMX.Layer.Object @object,
 			Tile tile
 		) {
-			var name = $"{@object.name ?? @object.type ?? tile?.gameObject?.name ?? ""}";
+			var name = $"{@object.name ?? @object.type ?? tile?.prefab?.name ?? ""}";
 			name = $"{name} {@object.id}".Trim();
 			GameObject gameObject = null;
 			var properties = Property.Merge(@object.properties, tile?.properties);
@@ -295,9 +329,9 @@ namespace KITTY {
 					gameObject = PrefabUtility.InstantiatePrefab(prefab) as GameObject;
 				}
 
-			} else if (tile?.gameObject) {
+			} else if (tile?.prefab) {
 				// Instantiate GameObject based on tile type.
-				gameObject = Instantiate(tile.gameObject);
+				gameObject = PrefabUtility.InstantiatePrefab(tile.prefab) as GameObject;
 
 			} else {
 				// Default instantiation when object and tile have no set type
@@ -308,11 +342,11 @@ namespace KITTY {
 			if (gameObject != null) {
 				// Apply properties to all behaviours.
 				gameObject.name = name;
+				Debug.Log(name);
 				var components = gameObject.GetComponentsInChildren<MonoBehaviour>();
 				foreach (var component in components) {
 					Property.Apply(properties, component);
 				}
-
 			} else {
 				// Warn on instantiation when object has type but no prefab was found.
 				gameObject = new GameObject(name);

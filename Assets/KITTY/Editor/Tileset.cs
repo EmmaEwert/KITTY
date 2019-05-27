@@ -32,7 +32,7 @@ namespace KITTY {
 					generateFallbackPhysicsShape: false
 				);
 				tile.color = Color.white;
-				tile.gameObject = prefab;
+				tile.prefab = prefab;
 				tile.hideFlags = HideFlags.HideInHierarchy;
 				tile.name = "Tile";
 				tile.transform = Matrix4x4.identity;
