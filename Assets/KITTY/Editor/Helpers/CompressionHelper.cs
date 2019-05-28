@@ -3,6 +3,9 @@
 	using System.IO;
 	using System.IO.Compression;
 
+	///<summary>
+	///Miscellaneous helper methods for compression.
+	///<summary>
 	internal static class CompressionHelper {
 		public static byte[] DecompressGZip(byte[] input) {
 			using (var inStream = new GZipStream(new MemoryStream(input), CompressionMode.Decompress)) {
