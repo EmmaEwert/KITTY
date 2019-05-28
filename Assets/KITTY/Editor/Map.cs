@@ -104,8 +104,8 @@
 					context.AddObjectToAsset($"Tile {gid}", tile);
 					if (!tile.sprite) { continue; }
 					context.AddObjectToAsset($"Sprite {gid}", tile.sprite);
-					for (var j = 0; j < tile.sprites.Length; ++j) {
-						context.AddObjectToAsset($"Sprite {gid} {j}", tile.sprites[j]);
+					for (var j = 0; j < tile.frames.Length; ++j) {
+						context.AddObjectToAsset($"Frame {gid} {j}", tile.frames[j].sprite);
 					}
 				}
 			}

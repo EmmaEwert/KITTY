@@ -56,17 +56,16 @@ namespace KITTY {
 						);
 						sprites[i].hideFlags = HideFlags.HideInHierarchy;
 					}
-					var duration = GreatestCommonDivisor(frames.Select(f => f.duration).ToArray());
-					var tileSprites = new List<Sprite>();
+					var tileFrames = new List<KITTY.Tile.Frame>();
 					for (var i = 0; i < sprites.Length; ++i) {
-						for (var j = 0; j < frames[i].duration / duration; ++j) {
-							tileSprites.Add(sprites[i]);
-						}
+						tileFrames.Add(new KITTY.Tile.Frame {
+							sprite = sprites[i],
+							duration = frames[i].duration
+						});
 					}
-					tile.sprites = tileSprites.ToArray();
-					tile.duration = duration;
+					tile.frames = tileFrames.ToArray();
 				} else {
-					tile.sprites = new Sprite[0];
+					tile.frames = new KITTY.Tile.Frame[0];
 				}
 				if (objects?.Length > 0) {
 					tile.sprite?.OverridePhysicsShape(objects.Select(s => s.points).ToList());
@@ -89,16 +88,6 @@ namespace KITTY {
 				public Rect rect;
 				public int duration;
 			}
-
-			int GreatestCommonDivisor(int[] ns) {
-				var result = ns[0];
-				for (var i = 1; i < ns.Length; ++i) {
-					result = GreatestCommonDivisor(ns[i], result);
-				}
-				return result;
-			}
-
-			int GreatestCommonDivisor(int a, int b) => a == 0 ? b : GreatestCommonDivisor(b % a, a);
 		}
 	}
 }

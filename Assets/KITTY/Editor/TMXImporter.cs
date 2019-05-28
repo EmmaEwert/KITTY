@@ -163,7 +163,7 @@ namespace KITTY {
 		}
 
 		///<summary>
-		///Create a GameObject for each Tile with a defined type, thus prefab.
+		///Create a GameObject for each Tile with a defined type and thus potentially a prefab.
 		///</summary>
 		static void CreateTileObjects(
 			Map map,
@@ -281,7 +281,7 @@ namespace KITTY {
 				renderer.color = new Color(1f, 1f, 1f, layer.opacity);
 
 				// A new animator controller is created for each unique tile, if necessary.
-				if (tile.sprites.Length > 1) {
+				if (tile.frames.Length > 1) {
 					if (!animators.TryGetValue(@object.gid & 0x1fffffff, out var controller)) {
 						controller = CreateAnimatorController(context, $"{@object.gid}", tile);
 						animators[@object.gid & 0x1fffffff] = controller;
@@ -385,7 +385,7 @@ namespace KITTY {
 			var endParameter = new AnimatorControllerParameter {
 				name = "End",
 				type = AnimatorControllerParameterType.Int,
-				defaultInt = tile.sprites.Length - 1,
+				defaultInt = tile.frames.Length - 1,
 			};
 			controller.AddParameter(startParameter);
 			controller.AddParameter(endParameter);
@@ -397,14 +397,14 @@ namespace KITTY {
 			};
 
 			/// Each frame is defined as its own state, with duration and immediate transitions.
-			var states = new AnimatorState[tile.sprites.Length];
+			var states = new AnimatorState[tile.frames.Length];
 			for (var j = 0; j < states.Length; ++j) {
 				var clip = new AnimationClip();
-				clip.frameRate = 1000f / tile.duration;
+				clip.frameRate = 1000f / tile.frames[j].duration;
 				clip.name = $"{name} {j}";
 				clip.hideFlags = HideFlags.HideInHierarchy;
 				var keyframes = new [] {
-					new ObjectReferenceKeyframe { time = 0, value = tile.sprites[j] }
+					new ObjectReferenceKeyframe { time = 0, value = tile.frames[j].sprite }
 				};
 				AnimationUtility.SetObjectReferenceCurve(clip, binding, keyframes);
 				states[j] = stateMachine.AddState($"{j}");
@@ -416,7 +416,6 @@ namespace KITTY {
 
 			// By default, each frame state transitions to the next at the end; the last frame state
 			// loops back.
-			// TODO: Avoid repeating frames of constant duration for variable-framerate animations.
 			for (var j = 0; j < states.Length; ++j) {
 				// Forward; keep going so long as the current state isn't the end.
 				if (j < states.Length - 1) {
