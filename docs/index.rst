@@ -22,3 +22,4 @@ warps, and pickups directly in Tiled. KITTY just imports and applies all that se
    manual/prefabs
    manual/properties
    manual/animations
+   manual/issues
