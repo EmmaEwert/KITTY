@@ -17,6 +17,7 @@ To make KITTY import a custom property to a specific field in a script, you simp
 field with the ``[TiledProperty]`` attribute, like so:
 
 .. :code-block: c#
+
 	public class Enemy : MonoBehaviour {
 		[TiledProperty] public int damage;
 		[TiledProperty] public float speed;

@@ -23,6 +23,7 @@ For example, a character controller script with 2 idle frames followed by 3 run 
 the following:
 
 .. code-block:: c#
+
 	void Update() {
 		var animator = GetComponentInChildren<Animator>();
 		if (running) {
