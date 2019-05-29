@@ -6,9 +6,14 @@ namespace KITTY {
 	using UnityEditor.Experimental.AssetImporters;
 	using UnityEngine;
 
-	///<summary>Tiled TSX tileset importer.</summary>
+	///<summary>
+	///Tiled TSX tileset importer.
+	///</summary>
 	[ScriptedImporter(2, "tsx", 1)]
 	internal class TSXImporter : ScriptedImporter {
+		///<summary>
+		///Loads and returns a Tileset asset, given a TSX structure.
+		///</summary>
 		public static Tileset Load(AssetImportContext context, TSX tsx) {
 			// Image collection tilesets can have gaps in their IDs; use the highest ID instead.
 			var tilecount = Mathf.Max(tsx.tilecount, tsx.tiles.LastOrDefault().id + 1);
@@ -31,7 +36,13 @@ namespace KITTY {
 			}
 
 			// Single-image tilesets all use the same texture.
-			var tiles = new (GameObject prefab, Texture2D texture, TSX.Tile.Object[] objects, TSX.Tile.Frame[] frames, Property[] properties)[tilecount];
+			var tiles = new (
+				GameObject prefab,
+				Texture2D texture,
+				TSX.Tile.Object[] objects,
+				TSX.Tile.Frame[] frames,
+				Property[] properties
+			)[tilecount];
 			for (var i = 0; i < tiles.Length; ++i) {
 				tiles[i].texture = texture;
 			}
@@ -47,30 +58,40 @@ namespace KITTY {
 				);
 			}
 
-			// Tiles
+			// Tileset tiles are pseudo-representations of actual tiles; we can't instantiate a tile
+			// properly until we know its sprite's pixels per unit, which depends on the tile*map*.
 			var tileset = ScriptableObject.CreateInstance<Tileset>();
 			tileset.name = tsx.name;
 			tileset.tiles = new Tileset.Tile[tilecount];
-			var pivot = Vector2.one * 0.5f - new Vector2(tsx.tileoffset.x, tsx.tileoffset.y) / new Vector2(tsx.tilewidth, tsx.tileheight);
+			var pivot = Vector2.one * 0.5f - new Vector2(tsx.tileoffset.x, tsx.tileoffset.y)
+				/ new Vector2(tsx.tilewidth, tsx.tileheight);
 			for (var i = 0; i < tileset.tiles.Length; ++i) {
 				var tileTexture = tiles[i].texture;
 				tileset.tiles[i].prefab = tiles[i].prefab;
 				tileset.tiles[i].texture = tileTexture;
 				tileset.tiles[i].pivot = pivot;
 				tileset.tiles[i].rect = new Rect(
-					texture ? (tsx.tilewidth + tsx.spacing) * (i % columns) + tsx.margin: 0,
-					texture ? (tsx.tileheight + tsx.spacing) * (rows - i / columns - 1) + texture.height - rows * tsx.tileheight - rows * tsx.spacing - tsx.margin + tsx.spacing: 0,
+					texture ? (tsx.tilewidth + tsx.spacing) * (i % columns) + tsx.margin : 0,
+					texture
+						? (tsx.tileheight + tsx.spacing) * (rows - i / columns - 1) + texture.height
+							- rows * tsx.tileheight - rows * tsx.spacing - tsx.margin + tsx.spacing
+						: 0,
 					texture ? tsx.tilewidth : tileTexture?.width ?? 0,
 					texture ? tsx.tileheight : tileTexture?.height ?? 0
 				);
-				tileset.tiles[i].objects = ParseObjects(tiles[i].objects, tileset.tiles[i].rect.height);
+				tileset.tiles[i].objects =
+					ParseObjects(tiles[i].objects, tileset.tiles[i].rect.height);
 				tileset.tiles[i].frames = new Tileset.Tile.Frame[tiles[i].frames?.Length ?? 0];
 				for (var j = 0; j < tileset.tiles[i].frames.Length; ++j) {
 					// TODO: Support image collection tileset animated tiles
 					tileset.tiles[i].frames[j] = new Tileset.Tile.Frame {
 						rect = new Rect(
-							(tsx.tilewidth + tsx.spacing) * (tiles[i].frames[j].tileid % columns) + tsx.margin,
-							(tsx.tileheight + tsx.spacing) * (rows - tiles[i].frames[j].tileid / columns - 1) + texture.height - rows * tsx.tileheight - rows * tsx.spacing - tsx.margin + tsx.spacing,
+							(tsx.tilewidth + tsx.spacing) * (tiles[i].frames[j].tileid % columns)
+								+ tsx.margin,
+							(tsx.tileheight + tsx.spacing)
+								* (rows - tiles[i].frames[j].tileid / columns - 1) + texture.height
+								- rows * tsx.tileheight - rows * tsx.spacing - tsx.margin
+								+ tsx.spacing,
 							tsx.tilewidth,
 							tsx.tileheight
 						),
@@ -80,16 +101,20 @@ namespace KITTY {
 				tileset.tiles[i].properties = tiles[i].properties ?? new Property[0];
 			}
 
-			context.AddObjectToAsset($"tileset_{tileset.name}", tileset);
+			context.AddObjectToAsset($"Tileset {tileset.name}", tileset);
 			return tileset;
 		}
 
-		///<summary>Construct a tileset from Tiled by instantiating one tile per texture sprite.</summary>
+		///<summary>
+		///Construct a tileset from Tiled by instantiating one tile per texture sprite.
+		///</summary>
 		public override void OnImportAsset(AssetImportContext context) {
 			Load(context, new TSX(XDocument.Load(assetPath).Element("tileset")));
 		}
 
-		///<summary>Parse collision shapes; either position and size, or list of points.</summary>
+		///<summary>
+		///Parse collision shapes; either position and size, or list of points.
+		///</summary>
 		static Tileset.Tile.Object[] ParseObjects(TSX.Tile.Object[] tsxObjects, float height) {
 			if (tsxObjects == null) {
 				return null;
@@ -122,7 +147,9 @@ namespace KITTY {
 			return objects;
 		}
 
-		///<summary>Load texture asset based on filename, optionally making a color transparent</summary>
+		///<summary>
+		///Load texture asset based on filename, optionally making a color transparent
+		///</summary>
 		static Texture2D LoadTexture(string filename, string trans, AssetImportContext context) {
 			var imageAssetPath = Path.GetFullPath(
 				Path.GetDirectoryName(context.assetPath)
@@ -136,9 +163,15 @@ namespace KITTY {
 			if (!texture) {
 				throw new FileNotFoundException($"could not load texture \"{imageAssetPath}\" ({filename}) of tileset \"{context.assetPath}\".");
 			}
+
 			if (trans != null) {
+				// If a transparent color is defined, we have to copy all the pixels and clear the
+				// pixels matching that color.
 				ColorUtility.TryParseHtmlString($"#{trans}".Substring(trans.Length - 6), out var transparent);
 				if (!texture.isReadable) {
+					// Instead of failing and requiring the user to flag a texture as readable, we
+					// can work around an unreadable texture by rendering it to a RenderTexture and
+					// reading pixels from that instead of the source texture.
 					var renderTexture = RenderTexture.GetTemporary(texture.width, texture.height, depthBuffer: 0, RenderTextureFormat.Default, RenderTextureReadWrite.Linear);
 					Graphics.Blit(texture, renderTexture);
 					var previousRenderTexture = RenderTexture.active;
@@ -149,14 +182,17 @@ namespace KITTY {
 					RenderTexture.active = previousRenderTexture;
 					RenderTexture.ReleaseTemporary(renderTexture);
 				}
-				var transparentTexture = new Texture2D(texture.width, texture.height, TextureFormat.ARGB32, mipChain: false) {
+				var transparentTexture = new Texture2D(
+					texture.width, texture.height, TextureFormat.ARGB32, mipChain: false
+				) {
 					filterMode = texture.filterMode
 				};
+				// Read all pixel colors, and clear those that match the defined transparent color.
 				var colors = texture.GetPixels();
 				colors = colors.Select(c => c == transparent ? Color.clear : c).ToArray();
 				transparentTexture.SetPixels(colors);
-				transparentTexture.name = $"texture_{filename}";
-				context.AddObjectToAsset($"texture_{filename}", transparentTexture);
+				transparentTexture.name = $"Texture {filename}";
+				context.AddObjectToAsset($"Texture {filename}", transparentTexture);
 				texture = transparentTexture;
 			}
 			context.DependsOnSourceAsset(imageAssetPath);
