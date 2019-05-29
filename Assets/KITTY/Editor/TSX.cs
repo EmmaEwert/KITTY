@@ -2,6 +2,9 @@ namespace KITTY {
 	using System.Linq;
 	using System.Xml.Linq;
 
+	///<summary>
+	///Direct C# representation of a Tiled TSX tileset.
+	///</summary>
 	internal struct TSX {
 		// Attributes
 		public int firstgid;
