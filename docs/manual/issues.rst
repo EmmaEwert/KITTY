@@ -69,6 +69,6 @@ This is the result of float-based texture sampling.
 For 2D pixel-perfect games, the camera can simply be locked to integer pixel positions, either with the
 2D Pixel Perfect package, or with a custom script.
 
-Ideally, though, KITTY will automatically add a 1-pixel border to a temprary texture around every
+Ideally, though, KITTY will automatically add a 1-pixel border to a temporary texture around every
 tile; the border just repeats the edge pixel colour, which masks the floating point texture sampling
 inaccuracies.
