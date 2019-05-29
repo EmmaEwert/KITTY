@@ -2,6 +2,9 @@ namespace KITTY {
 	using System.Linq;
 	using System.Xml.Linq;
 
+	///<summary>
+	///Direct C# representation of a Tiled TMX tilemap.
+	///</summary>
 	internal struct TMX {
 		// Attributes
 		public string orientation;
@@ -77,6 +80,9 @@ namespace KITTY {
 						?.Elements("chunk")
 						.Select(c => new Chunk(c))
 						.ToArray() ?? new Chunk[0];
+					
+					// Even though Tiled only uses chunks for infinite maps, they're used for fixed
+					// maps here as well, for ease of use.
 					if (chunks.Length == 0 && element != null) {
 						chunks = new [] { new Chunk {
 							x = 0,
