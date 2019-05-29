@@ -8,6 +8,8 @@
 
 	///<summary>
 	///Helper method for loading prefabs based on name.
+	///
+	///Note: PrefabHelper.cache must be cleared manually on reimport.
 	///</summary>
 	internal static class PrefabHelper {
         public static Dictionary<string, GameObject> cache = new Dictionary<string, GameObject>();
