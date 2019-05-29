@@ -374,9 +374,13 @@ namespace KITTY {
 			// Create an animator controller with a default layer and state machine.
 			var controller = new AnimatorController();
 			controller.name = name;
+			controller.hideFlags = HideFlags.HideInHierarchy;
 			controller.AddLayer("Base Layer");
 			controller.layers[0].stateMachine = new AnimatorStateMachine();
-			controller.hideFlags = HideFlags.HideInHierarchy;
+			var stateMachine = controller.layers[0].stateMachine;
+
+			// The Start and End parameters define what frame index the desired animation sequence
+			// should start and end at, respectively.
 			var startParameter = new AnimatorControllerParameter {
 				name = "Start",
 				type = AnimatorControllerParameterType.Int,
@@ -389,14 +393,15 @@ namespace KITTY {
 			};
 			controller.AddParameter(startParameter);
 			controller.AddParameter(endParameter);
-			var stateMachine = controller.layers[0].stateMachine;
+
 			var binding = new EditorCurveBinding {
 				type = typeof(SpriteRenderer),
 				path = "",
 				propertyName = "m_Sprite",
 			};
 
-			/// Each frame is defined as its own state, with duration and immediate transitions.
+			// Each frame is defined as its own state, with individual durations and immediate
+			// transitions.
 			var states = new AnimatorState[tile.frames.Length];
 			for (var j = 0; j < states.Length; ++j) {
 				var clip = new AnimationClip();
@@ -414,10 +419,12 @@ namespace KITTY {
 				context.AddObjectToAsset($"State {name} {j}", states[j]);
 			}
 
-			// By default, each frame state transitions to the next at the end; the last frame state
-			// loops back.
+			// Each frame state transitions to the next after its duration; the last frame state,
+			// defined by the value of the End property, loops back to the frame defined by the
+			// value of the Start property.
+			// By default, the entire animation sequence plays continuously.
 			for (var j = 0; j < states.Length; ++j) {
-				// Forward; keep going so long as the current state isn't the end.
+				// Forward; keep going to the next so long as the current state isn't the end state.
 				if (j < states.Length - 1) {
 					var destination = states[(j+1) % states.Length];
 					var transition = states[j].AddTransition(destination);
@@ -430,7 +437,7 @@ namespace KITTY {
 					context.AddObjectToAsset($"Transition {name} {j}", transition);
 				}
 				for (var k = 0; k <= j; ++k) {
-					// Back; go back to start if we're at the end.
+					// Back; go back to the start state if we're at the end state.
 					var destination = states[k];
 					var transition = states[j].AddTransition(destination);
 					transition.hasExitTime = true;
@@ -442,7 +449,7 @@ namespace KITTY {
 					context.AddObjectToAsset($"Transition Back {name} {j} {k}", transition);
 				}
 				for (var k = j + 1; k < states.Length; ++k) {
-					// Skip; skip ahead if we're behind start.
+					// Skip; skip ahead to the start state if we're behind it.
 					var destination = states[k];
 					var transition = states[j].AddTransition(destination);
 					transition.hasExitTime = false;
