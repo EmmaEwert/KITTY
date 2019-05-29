@@ -4,11 +4,15 @@ namespace KITTY {
 	using System.Linq;
 	using UnityEngine;
 
-	///<summary>Asset based on a Tiled tileset.</summary>
+	///<summary>
+	///Asset based on a Tiled tileset.
+	///</summary>
 	internal class Tileset : ScriptableObject {
 		public Tile[] tiles;
 
-		///<summary>Asset based on a single tile in a Tiled tileset.</summary>
+		///<summary>
+		///Structure based on a single tile in a Tiled tileset. Handles actual Tile instantiation.
+		///</summary>
 		[Serializable]
 		public struct Tile {
 			public Texture2D texture;
@@ -19,6 +23,9 @@ namespace KITTY {
 			[HideInInspector] public Frame[] frames;
 			[HideInInspector] public Property[] properties;
 
+			///<summary>
+			///Instantiate an actual Tile based on this tileset tile.
+			///</summary>
 			public KITTY.Tile Instantiate(float pixelsPerUnit) {
 				var tile = ScriptableObject.CreateInstance<KITTY.Tile>();
 				tile.sprite = Sprite.Create(
@@ -40,9 +47,12 @@ namespace KITTY {
 					tile.sprite.hideFlags = HideFlags.HideInHierarchy;
 					tile.sprite.name = "Sprite";
 				}
+
+				// Animation frames.
+				// TODO: Support image collection tileset animation
 				if (frames.Length > 0) {
 					var sprites = new Sprite[frames.Length];
-					// TODO: Support image collection tileset animation
+					var tileFrames = new List<KITTY.Tile.Frame>();
 					for (var i = 0; i < sprites.Length; ++i) {
 						sprites[i] = Sprite.Create(
 							texture,
@@ -55,9 +65,6 @@ namespace KITTY {
 							generateFallbackPhysicsShape: false
 						);
 						sprites[i].hideFlags = HideFlags.HideInHierarchy;
-					}
-					var tileFrames = new List<KITTY.Tile.Frame>();
-					for (var i = 0; i < sprites.Length; ++i) {
 						tileFrames.Add(new KITTY.Tile.Frame {
 							sprite = sprites[i],
 							duration = frames[i].duration
@@ -67,22 +74,31 @@ namespace KITTY {
 				} else {
 					tile.frames = new KITTY.Tile.Frame[0];
 				}
+
+				// Collision shapes.
+				// TODO: Grid collidertype when the only collider is a single full rect
 				if (objects?.Length > 0) {
 					tile.sprite?.OverridePhysicsShape(objects.Select(s => s.points).ToList());
-					// TODO: Grid collidertype when the collider is a single full rect
 					tile.colliderType = UnityEngine.Tilemaps.Tile.ColliderType.Sprite;
 				} else {
 					tile.colliderType = UnityEngine.Tilemaps.Tile.ColliderType.None;
 				}
+
 				tile.properties = properties ?? new Property[0];
 				return tile;
 			}
 
+			///<summary>
+			///A single collision shape polygon for a tile, defined by an array of 2D points.
+			///</summary>
 			[Serializable]
 			public struct Object {
 				public Vector2[] points;
 			}
 
+			///<summary>
+			///A single animation frame for a tile, defined by its `rect` in the tileset image.
+			///</summary>
 			[Serializable]
 			public struct Frame {
 				public Rect rect;
