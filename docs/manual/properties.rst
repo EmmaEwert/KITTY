@@ -16,7 +16,7 @@ TiledProperty attribute
 To make KITTY import a custom property to a specific field in a script, you simply decorate that
 field with the ``[TiledProperty]`` attribute, like so:
 
-.. :code-block: c#
+.. code-block:: c#
 
 	public class Enemy : MonoBehaviour {
 		[TiledProperty] public int damage;
@@ -30,7 +30,8 @@ in the C# script.
 The ``[TiledProperty]`` attribute can take an optional ``name`` parameter, in case the property
 defined in Tiled does not have (roughly) the same name as the corresponding field in C#:
 
-.. :code-block: c#
+.. code-block:: c#
+
 	[TiledProperty("Wait")] public float delay;
 
 This will read the ``Wait`` custom property from the tile or object, and assign its value defined in
