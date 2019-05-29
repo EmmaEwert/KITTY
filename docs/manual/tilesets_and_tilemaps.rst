@@ -8,6 +8,20 @@ Tiled is a piece of software that allows you to define tilesets and tilemaps.
 KITTY imports those tilesets and tilemaps into Unity, using the native ScriptedImporter class.
 
 
+Tiles
+-----
+
+Each tileset tile defines what form the tile will take in a tilemap in Unity.
+
+For example, if the tile has an animation in a Tiled tileset, it'll be animated in Unity, too.
+
+Collision shapes defined in a Tiled tileset translate directly into the tilemap's collider, as well.
+
+Additionally, if the tile has a defined Type in a Tiled tileset, a prefab named after that Type will
+be instantiated automatically at the tile's position. This is described in more detail in the
+:ref:`prefabs` section.
+
+
 Files
 -----
 
