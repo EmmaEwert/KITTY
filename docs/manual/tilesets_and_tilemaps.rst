@@ -17,6 +17,8 @@ For example, if the tile has an animation in a Tiled tileset, it'll be animated 
 
 Collision shapes defined in a Tiled tileset translate directly into the tilemap's collider, as well.
 
+.. figure:: images/composite-collider.gif
+
 Additionally, if the tile has a defined Type in a Tiled tileset, a prefab named after that Type will
 be instantiated automatically at the tile's position. This is described in more detail in the
 :ref:`prefabs` section.
