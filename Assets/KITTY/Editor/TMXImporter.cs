@@ -316,7 +316,8 @@ namespace KITTY {
 			TMX.Layer.Object @object,
 			Tile tile
 		) {
-			var name = $"{@object.name ?? @object.type ?? tile?.prefab?.name ?? ""}";
+			var tileName = tile?.prefab ? tile.prefab.name : string.Empty;
+			var name = $"{@object.name ?? @object.type ?? tileName}";
 			name = $"{name} {@object.id}".Trim();
 			GameObject gameObject = null;
 			var properties = Property.Merge(@object.properties, tile?.properties);
