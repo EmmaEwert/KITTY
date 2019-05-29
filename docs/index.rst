@@ -3,6 +3,8 @@
 KITTY Imports Tiled Tilemaps Yay!
 =================================
 
+.. figure:: images/cat.png
+
 This is a Tiled importer for Unity.
 
 KITTY differentiates itself from other Tiled importers through seamless basic integration, automatic
