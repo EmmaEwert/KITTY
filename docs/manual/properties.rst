@@ -14,7 +14,7 @@ TiledProperty attribute
 -----------------------
 
 To make KITTY import a custom property to a specific field in a script, you simply decorate that
-field with the ``[TiledProperty]`` attribute, like so:
+field with the ``[TiledProperty]`` attribute; for example like this:
 
 .. code-block:: c#
 

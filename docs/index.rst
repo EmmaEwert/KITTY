@@ -3,10 +3,11 @@
 KITTY Imports Tiled Tilemaps Yay!
 =================================
 
-Yet another Tiled importer for Unity.
+This is a Tiled importer for Unity.
 
-KITTY differentiates itself through seamless basic integration, automatic object-to-prefab
-instantiation, and friction-free translation from Tiled custom properties to C# fields.
+KITTY differentiates itself from other Tiled importers through seamless basic integration, automatic
+object-to-prefab instantiation, and friction-free translation from Tiled custom properties to C#
+fields.
 
 KITTY imports every graphic, object and setting you've defined in your Tiled tilemaps into Unity.
 

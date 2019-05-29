@@ -21,6 +21,9 @@ Additionally, if the tile has a defined Type in a Tiled tileset, a prefab named 
 be instantiated automatically at the tile's position. This is described in more detail in the
 :ref:`prefabs` section.
 
+When importing any tilemap, a tile is exactly one Unity unit wide – if the tilemap tiles are square,
+the tiles are one Unity unit tall, as well.
+
 
 Files
 -----
@@ -45,8 +48,8 @@ Automatic reloading
 KITTY automatically loads any changed image, tileset or tilemap, and any asset depending on the
 changed file.
 
-This means that when you edit images, configure tilesets or draw on tilemaps, Unity will pick up
-and apply the changes immediately.
+This means that when you edit images, configure tilesets or draw on tilemaps, Unity will apply the
+changes immediately.
 
 Note that for tilesets, Tiled recommends avoiding a change in width – ie. how many tiles are in a
 row. As such, you should add new tile rows to the bottom of the tileset image, if necessary.
