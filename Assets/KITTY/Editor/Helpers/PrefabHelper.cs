@@ -6,11 +6,16 @@
 	using UnityEditor.Experimental.AssetImporters;
 	using UnityEngine;
 
-	///<summary>Helper method for loading prefabs based on name and type.</summary>
+	///<summary>
+	///Helper method for loading prefabs based on name.
+	///</summary>
 	internal static class PrefabHelper {
         public static Dictionary<string, GameObject> cache = new Dictionary<string, GameObject>();
 
-		///<summary>Load first prefab with `name`.</summary>
+		///<summary>
+		///Load first prefab found in any folder with `name`.
+		///</summary>
+		// TODO: Heuristic for relevance in case of multiple results.
         public static GameObject Load(string name, AssetImportContext context) {
             if (string.IsNullOrEmpty(name)) { return null; }
             if (cache.TryGetValue(name, out var cachedPrefab)) {
