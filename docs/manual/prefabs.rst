@@ -60,6 +60,10 @@ is relative to the rotation and flipping, so prefabs have correct rotations and 
 Prefabs retain their initial rotation when instantiated; the rotation and flipping defined in Tiled
 is compounded with the initial rotation.
 
+.. figure:: images/prefab-rotation.png
+
+*Fun with initial prefab rotation of 60° around the X-axis.*
+
 
 Properties
 ----------
