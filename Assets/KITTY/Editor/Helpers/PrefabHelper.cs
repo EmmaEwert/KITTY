@@ -15,7 +15,8 @@
         public static Dictionary<string, GameObject> cache = new Dictionary<string, GameObject>();
 
 		///<summary>
-		///Load first prefab found in any folder with `name`.
+		///Load prefab with `name`. If multiple prefabs exist, the most relevant one is selected
+		///based on the path prefix similarity to the source asset path.
 		///</summary>
 		// TODO: Heuristic for relevance in case of multiple results.
         public static GameObject Load(string name, AssetImportContext context) {
@@ -30,6 +31,7 @@
                 where Path.GetFileName(path) == filename
                 let prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path)
                 where prefab != null
+				orderby PrefixMatch(path, context.assetPath) descending
                 select new { prefab, path }
             ).FirstOrDefault();
             cache.Add(name, asset?.prefab);
@@ -40,5 +42,17 @@
 			}
             return asset?.prefab;
         }
+
+		///<summary>
+		///Compare two strings, returning the number of matching prefix characters.
+		///</summary>
+		static int PrefixMatch(string a, string b) {
+			var match = 0;
+			for (var i = 0; i < a.Length; ++i) {
+				if (b.Length < i - 1 || a[i] != b[i]) { return match; }
+				++match;
+			}
+			return match;
+		}
 	}
 }

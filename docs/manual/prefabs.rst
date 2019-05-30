@@ -3,9 +3,10 @@
 Prefab instantiation
 ====================
 
-By setting the Type property of a tile or object in Tiled, KITTY will instantiate the first prefab
-with a matching name from anywhere in the Assets folder.
+By setting the Type property of a tile or object in Tiled, KITTY will instantiate the most relevant
+prefab with a matching name from anywhere in the Assets folder.
 
+Relevance is determined by how much of the prefab path matches the tilemap path.
 
 
 Tile prefabs
@@ -19,8 +20,8 @@ if any.
 Object prefabs
 --------------
 
-Objects with a defined Type property in tiled will instantiate an instance of a prefab with a
-matching name from anywhere in the Assets folder.
+Objects with a defined Type property in tiled will instantiate an instance of the most relevant
+prefab with the same name as the Type property's value.
 
 The instantiated GameObject's name is changed to match the name of the object in Tiled, if any.
 

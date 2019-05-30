@@ -41,8 +41,8 @@ Tiled to the ``delay`` field in the C# script.
 Tile properties
 ---------------
 
-Each tile with a defined Type will instantiate a prefab from anywhere in the Assets folder named
-after that type. This is described in more detail in the :ref:`prefabs` section.
+Each tile with a defined Type will instantiate the most relevant prefab from anywhere in the Assets
+folder named after that type. This is described in more detail in the :ref:`prefabs` section.
 
 If a field on a MonoBehaviour attached to that prefab (or any children) is decorated with the
 ``[TiledProperty]`` attribute, the value of that field is set based on the tile's Custom Property of
