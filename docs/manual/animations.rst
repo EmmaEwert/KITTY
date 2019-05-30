@@ -19,21 +19,28 @@ same animation in Tiled.
 By setting the "Start" and "End" properties of an object's child Animator component, any subsequence
 can be played at any time.
 
-For example, a character controller script with 2 idle frames followed by 3 run frames might contain
+For example, a character controller script with 4 idle frames followed by 6 walk frames might contain
 the following:
 
 .. code-block:: c#
 
 	void Update() {
 		var animator = GetComponentInChildren<Animator>();
-		if (running) {
-			animator.SetParameter("Start", 2);
-			animator.SetParameter("End", 4);
+		if (walking) {
+			animator.SetParameter("Start", 4);
+			animator.SetParameter("End", 9);
 		} else {
 			animator.SetParameter("Start", 0);
-			animator.SetParameter("End", 1);
+			animator.SetParameter("End", 3);
 		}
 	}
 
-This code tells the Animator to cycle through frames 2, 3, and 4 when running. When not running,
-frames 0 and 1 are cycled through instead.
+This code tells the Animator to cycle through frames 4, 5, 6, 7, 8 and 9 when walking. When not
+walking, frames 0, 1, 2 and 3 are cycled through instead.
+
+Frame indices start from 0.
+
+.. figure:: images/idle-walk-animation.gif
+
+*In the NES game DuckTales 2, Scrooge McDuck has 4 idle frames (3 unique) and 6 walk frames
+(5 unique)*
