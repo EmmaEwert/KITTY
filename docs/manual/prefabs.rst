@@ -44,6 +44,8 @@ tile graphic.
 For any collision shapes on the source tile of a tile object, a child PolygonCollider2D is created
 as well.
 
+.. figure:: images/tile-object.png
+
 If the source tile of a tile object is animated, an Animator with a preconfigured AnimatorController
 is also added to the Renderer GameObject. This is described in more detail in the :ref:`animations`
 section.
