@@ -16,7 +16,11 @@ Sometimes, the frames of an animated tile aren't meant to be played fully in seq
 a character sprite sheet tileset might have animations for idle, run, and jump, all defined in the
 same animation in Tiled.
 
-By setting the "Start" and "End" properties of an object's child Animator component, any subsequence
+The animation frames defined in tiled determine each frame's duration, as well. For more direct
+control over playback speed, the "Speed" parameter can be used as a playback speed factor. It
+defaults to `1.0f`.
+
+By setting the "Start" and "End" parameters of an object's child Animator component, any subsequence
 can be played at any time.
 
 For example, a character controller script with 4 idle frames followed by 6 walk frames might contain

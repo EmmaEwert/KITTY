@@ -395,6 +395,13 @@ namespace KITTY {
 			};
 			controller.AddParameter(startParameter);
 			controller.AddParameter(endParameter);
+			// The Speed parameter simply controls the animation playback speed.
+			var speedParameter = new AnimatorControllerParameter {
+				name = "Speed",
+				type = AnimatorControllerParameterType.Float,
+				defaultFloat = 1,
+			};
+			controller.AddParameter(speedParameter);
 
 			var binding = new EditorCurveBinding {
 				type = typeof(SpriteRenderer),
@@ -416,6 +423,8 @@ namespace KITTY {
 				AnimationUtility.SetObjectReferenceCurve(clip, binding, keyframes);
 				states[j] = stateMachine.AddState($"{j}");
 				states[j].motion = clip;
+				states[j].speedParameter = "Speed";
+				states[j].speedParameterActive = true;
 				states[j].writeDefaultValues = false;
 				context.AddObjectToAsset($"Clip {name} {j}", clip);
 				context.AddObjectToAsset($"State {name} {j}", states[j]);
