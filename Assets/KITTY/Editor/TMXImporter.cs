@@ -279,6 +279,7 @@ namespace KITTY {
 				renderer.drawMode = SpriteDrawMode.Sliced; // HACK: Makes renderer.size work
 				renderer.size = new Vector2(@object.width, @object.height) / map.tilewidth;
 				renderer.color = new Color(1f, 1f, 1f, layer.opacity);
+				renderer.maskInteraction = SpriteMaskInteraction.VisibleOutsideMask;
 
 				// A new animator controller is created for each unique tile, if necessary.
 				if (tile.frames.Length > 1) {
