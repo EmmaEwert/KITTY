@@ -290,11 +290,13 @@ We need to update the ``Update`` method to call our new ``Walk`` method as a cor
 
 .. code-block:: c#
 
+	// …
 	if (input.x != 0f) {
 		StartCoroutine(Walk(new Vector3(input.x, 0)));
 	} else if (input.y != 0f) {
 		StartCoroutine(Walk(new Vector3(0, input.y)));
 	}
+	// …
 
 Calling ``Walk`` as a coroutine makes it able to stop for a bit and continue on next frame, instead
 of running all the code immediately.
@@ -354,6 +356,7 @@ method's movement loop in our ``GridController`` class:
 
 .. code-block:: c#
 
+	// …
 	// BoxCast from the character's center, in the desired direction, to check for collisions.
 	var origin = transform.position + new Vector3(0.5f, 0.5f);
 	var size = Vector2.one / 2f; // Half box size to avoid false positives.
@@ -368,6 +371,7 @@ method's movement loop in our ``GridController`` class:
 			yield return null; // Wait for one frame before continuing.
 		}
 	}
+	// …
 
 This code addition simply makes sure we only run the movement loop if the player wouldn't collide
 with anything at the target position.
@@ -382,8 +386,8 @@ Occlusion with Tile Masks
 -------------------------
 
 A non-essential improvement we can make is to let the player walk behind/under things like roofs and
-treetops – since my "Characters" layer is on top of all other layers, the player character renders
-on top of everything.
+treetops – since my "Characters" layer is on top of all other layers, the player character currently
+renders on top of everything.
 
 You *could* add another Tile Layer above the "Characters" layer, and make sure everything that
 should occlude the player character is placed in that layer, and not its original layer.
@@ -412,8 +416,8 @@ Create a script called `TileMask`:
 		}
 	}
 
-Since the sprite's pivot will be read as centered, the transform needs to be moved to the center of
-the sprite for it to align with the source tile.
+Since the sprite's pivot will be read as centered, the transform's ``localPosition`` is moved to the
+center of the sprite to align it with the source tile.
 
 Now create a new prefab called "Mask", and add your new ``TileMask`` component to it. A
 ``SpriteMask`` component will automatically be added as well, because of the ``RequireComponent``
@@ -429,21 +433,173 @@ This approach of defining the occlusion directly in the tileset means you avoid 
 occlusion definition, don't have to wrestle with multiple layers, and can't forget to make a tile in
 the tilemap occlude the player.
 
-If you make changes to a prefab for tileset tiles, you need to reimport the tile*set*, which will
+If you make changes to a prefab for tileset tiles, you need to reimport the tile`set`, which will
 automatically reimport the tilemap as well.
 
 
 Interactions
 ------------
 
+We have a working prototype for a playable game, now! There's no way for the player to interact with
+the world, though. Let's add signs the player can read.
+
 Custom Properties
 `````````````````
+
+Tiled allows you to add Custom Properties to almost everything, from maps and layers to tiles and
+objects.
+
+KITTY allows you to assign the value of a Custom Property to a field in one or more of your classes,
+through the ``[TiledProperty]`` attribute. We'll use that to define the text on the signs.
 
 Simple Sign
 ```````````
 
+Create a new prefab called "Sign", add a child with a ``Canvas`` component, and a child with a
+``Text`` component to the Canvas child. Configure the text to be visible when there's a few lines in
+the ``Text`` component, then disable the Canvas child so it doesn't start visible.
+
+Feel free to make it look fancy; I added a background panel and a custom font.
+
+Create a new ``Sign`` component, and add it to the root of the "Sign" prefab:
+
+.. code-block:: c#
+
+	using System.Collections;
+	using KITTY;
+	using UnityEngine;
+	using UnityEngine.UI;
+
+	public class Sign : MonoBehaviour {
+		public GameObject canvas;
+		[TiledProperty] public string text;
+
+		public IEnumerator Interact() {
+			// Enable the text canvas, and wait for the player to press the "Fire1" button.
+			canvas.SetActive(true);
+			GetComponentInChildren<Text>().text = text;
+			while (!Input.GetButtonDown("Fire1")) {
+				yield return null;
+			}
+			canvas.SetActive(false);
+		}
+	}
+
+Remember to add a reference to your Canvas GameObject in the ``Sign`` component's inspector.
+
+The ``[TiledProperty]`` attribute lets us assign the value of any Custom Property named "Text"
+(case-insensitive, ignoring whitespace) directly from an object or tile in Tiled directly to our
+``string text`` property. `Nice`.
+
+We're returning an IEnumerator again, because we want the ``GridController`` to wait for the "Fire1"
+button to be pressed before enabling its ``Update`` method again. The default "Fire1" buttons are
+Ctrl, left mouse button, and joypad button 1.
+
+We need to add a few lines of code to the ``GridController`` class as well. It needs to wait for the
+``Interact`` coroutine to finish when there `is` a BoxCast hit, `and` the collider that was hit also
+has a `Sign` component. Put this in the ``if (hit)``-block:
+
+.. code-block:: c#
+
+	// …
+	if (hit) {
+		// Interact with a Sign, if any.
+		var interaction = hit.collider.GetComponentInParent<Sign>()?.Interact();
+		if (interaction != null) {
+			yield return StartCoroutine(interaction);
+		}
+	} else {
+	// …
+
+Coroutines can start other coroutines, and even wait for them; the ``GridController``'s ``Walk``
+method will now wait for the ``Sign``'s ``Interact`` method to complete before enabling the
+``GridController``'s ``Update`` method again with ``enabled = true;``
+
+We fetch the ``Sign`` component through ``collider.GetComponentInParent<Sign>()`` because KITTY
+automatically adds one or more child colliders based on a tile's collision shapes to instantiated
+prefabs.
+
+.. figure:: images/tutorial-sign-prefab.png
+
+Back to Tiled; we need to make sure our sign tile has the Type "Sign", and has a full-tile collision
+shape. You can add a default ``string`` Custom Property named "Text", as well; its value will be
+used as sign text if you don't give a sign a specific text.
+
+.. figure:: images/tutorial-sign-properties.png
+
+If you have several different sign tiles you want to use, just repeat the process for all of them.
+
+Now, add as many Tile Object Signs as you want, and add or change their "Text" Custom Property.
+
+.. figure:: images/tutorial-unity-signs.gif
+
+Switch back to Unity, enter Play Mode, and walk into a sign; with a few lines of code and a single
+Custom Property, you're now able to interact with the game world!
+
+
 Directional "Sign"
 ``````````````````
+
+Before we start animating the player, let's improve our ``Sign`` component a bit; depending on how
+you look at it, a stationary NPC that faces the player when speaking is really just a "Directional
+Sign".
+
+Instead of having separate classes and prefabs for Signs and stationary NPCs, we can just make our
+``Sign`` component face the player if it has different tiles, or `frames`, for the four directions:
+
+.. code-block:: c#
+
+	// …
+	public IEnumerator Interact(Transform actor) {
+		// Display a specific direction frame to face the player.
+		var animator = GetComponentInChildren<Animator>();
+		var direction = actor.position - transform.position;
+		var frame = 0;
+		if      (direction == Vector3.down)  { frame = 0; }
+		else if (direction == Vector3.left)  { frame = 1; }
+		else if (direction == Vector3.up)    { frame = 2; }
+		else if (direction == Vector3.right) { frame = 3; }
+		animator?.SetInteger("Start", frame);
+		animator?.SetInteger("End", frame);
+
+		// Enable the text canvas, and wait for the player to press the "Fire1" button.
+		// …
+	}
+	// …
+
+To determine the direction the "Sign" should face, we need to know what ``transform`` is interacting
+with it. Depending on this direction, we select one of the four directional frames for our NPC
+"Sign".
+
+KITTY automatically adds a preconfigured ``Animator`` component to the automatic ``SpriteRenderer``
+of every Tiled tile object that's based on an animated tile.
+
+We can set a subsequence of frames for this ``Animator`` at any time by specifying its ``Start`` and
+``End`` properties. By setting both to the same value, the "animation" effectively turns into a
+single frame – the directional frame we want.
+
+The ``GridComponent`` needs to pass in its ``transform`` when calling ``Interact``, too:
+
+.. code-block:: c#
+
+	var interaction = hit.collider.GetComponentInParent<Sign>()?.Interact(transform);
+
+The only thing you need to do in Tiled is to define a short animation for your NPC "Sign", with one
+frame for each of the four directions, and make sure the main tile has the Type "Sign" and a defined
+collision shape.
+
+.. figure:: images/tutorial-npc-animation.gif
+
+Place a few NPC "Signs", add a ``string`` Custom Property named "Text" with whatever text you want,
+and they will turn to face the player when interacted with in Unity's Play Mode.
+
+.. figure:: images/tutorial-unity-npc.gif
+
+She spins! By default, objects based on animated tiles will play out their full sequence of frames
+in a loop. If you want to have the "Sign" start facing one direction, just set the ``Start`` and
+``End`` parameters of the animator to the same frame number in a ``Start`` method. Remember to check
+whether the GameObject `has` an animator component, first. Tip: Using ``animator?.SetParameter``
+will not call ``SetParameter`` if ``animator == null``.
 
 
 Animating the Player
