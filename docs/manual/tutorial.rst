@@ -349,8 +349,8 @@ collision shapes in your Tiled tileset. Neat.
 
 The collider doesn't stop the player yet, though. One way of making GameObjects interact with
 colliders in Unity is to add a ``Collider2D`` and a ``Rigidbody2D`` component, but since we don't
-need physics, just collisions, we can add a simple collision check around the ``Walk`` method's
-movement loop in our ``GridController`` class:
+need physics, just collisions, we can instead add a simple collision check around the ``Walk``
+method's movement loop in our ``GridController`` class:
 
 .. code-block:: c#
 
@@ -372,7 +372,7 @@ movement loop in our ``GridController`` class:
 This code addition simply makes sure we only run the movement loop if the player wouldn't collide
 with anything at the target position.
 
-.. figure:: images/tutorial-collision.png
+.. figure:: images/tutorial-collision.gif
 
 If you enter Play Mode now, the player character is no longer be able to pass through the tiles you
 defined collision shapes for in your tilesets.
@@ -380,6 +380,57 @@ defined collision shapes for in your tilesets.
 
 Occlusion with Tile Masks
 -------------------------
+
+A non-essential improvement we can make is to let the player walk behind/under things like roofs and
+treetops – since my "Characters" layer is on top of all other layers, the player character renders
+on top of everything.
+
+You *could* add another Tile Layer above the "Characters" layer, and make sure everything that
+should occlude the player character is placed in that layer, and not its original layer.
+
+I find non-semantic layers like that tedious, repetitious, and error-prone, though.
+
+Let's define occluding tiles directly in the tileset, instead; we'll use a prefab with a
+``SpriteMask`` component, and a small script that synchronises the ``SpriteMask``'s sprite with the
+automatically generated ``SpriteRenderer``'s sprite.
+
+Create a script called `TileMask`:
+
+.. code-block:: c#
+
+	using UnityEngine;
+	using UnityEngine.Tilemaps;
+
+	[RequireComponent(typeof(SpriteMask))]
+	public class TileMask : MonoBehaviour {
+		void Start() {
+			var tilemap = GetComponentInParent<Tilemap>();
+			var position = Vector3Int.FloorToInt(transform.localPosition);
+			var sprite = tilemap.GetSprite(position);
+			GetComponent<SpriteMask>().sprite = sprite;
+			transform.localPosition += (Vector3)(sprite.pivot / sprite.pixelsPerUnit);
+		}
+	}
+
+Since the sprite's pivot will be read as centered, the transform needs to be moved to the center of
+the sprite for it to align with the source tile.
+
+Now create a new prefab called "Mask", and add your new ``TileMask`` component to it. A
+``SpriteMask`` component will automatically be added as well, because of the ``RequireComponent``
+class attribute.
+
+Finally, in your tileset in Tiled, go through each tile that should occlude objects, and set their
+Type to "Mask". This will make KITTY instantiate your new "Mask" prefab at every one of those tiles'
+positions in your tilemap.
+
+.. figure:: images/tutorial-mask.gif
+
+This approach of defining the occlusion directly in the tileset means you avoid repeating the
+occlusion definition, don't have to wrestle with multiple layers, and can't forget to make a tile in
+the tilemap occlude the player.
+
+If you make changes to a prefab for tileset tiles, you need to reimport the tile*set*, which will
+automatically reimport the tilemap as well.
 
 
 Interactions
@@ -410,6 +461,16 @@ Animation
 `````````
 
 
+Recap
+-----
+
+Files
+`````
+
+Code
+````
+
+
 Advanced: Opening doors
 -----------------------
 
@@ -423,8 +484,8 @@ Taking Control of the Player Character
 ``````````````````````````````````````
 
 
-Going Forward
--------------
+Going Forward with KITTY
+------------------------
 
 This Tutorial
 `````````````
