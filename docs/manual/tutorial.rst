@@ -1,7 +1,7 @@
 .. _tutorial:
 
-Getting Started
-===============
+Tutorial
+========
 
 Thank you for using KITTY!
 
@@ -14,11 +14,19 @@ and doors which are all defined in Tiled. It plays like this:
 
 .. figure:: images/tutorial-teaser.gif
 
-Keep in mind that this is just a quick example project to get you started; KITTY can do much, much
+Keep in mind that this is just an example project to get you started; KITTY can do much, much
 more than what this tutorial teaches.
 
 Learning how to use Tiled is not part of this tutorial. Have a look at the `Official Tiled
 Documentation <https://docs.mapeditor.org/>`_ for that.
+
+
+TL;DR
+-----
+
+- Make tilemaps with typed and possibly animated objects in Tiled
+- Make prefabs with custom components and names that match Tiled objects' types
+- Import, change, and reimport tilemaps as needed
 
 
 Images, Tilesets and Tilemaps
@@ -423,8 +431,8 @@ Now create a new prefab called "Mask", and add your new ``TileMask`` component t
 ``SpriteMask`` component will automatically be added as well, because of the ``RequireComponent``
 class attribute.
 
-Finally, in your tileset in Tiled, go through each tile that should occlude objects, and set their
-Type to "Mask". This will make KITTY instantiate your new "Mask" prefab at every one of those tiles'
+Finally, in your tileset in Tiled, select all tiles that should occlude objects, and set their Type
+to "Mask". This will make KITTY instantiate your new "Mask" prefab at every one of those tiles'
 positions in your tilemap.
 
 .. figure:: images/tutorial-mask.gif
@@ -433,7 +441,7 @@ This approach of defining the occlusion directly in the tileset means you avoid 
 occlusion definition, don't have to wrestle with multiple layers, and can't forget to make a tile in
 the tilemap occlude the player.
 
-If you make changes to a prefab for tileset tiles, you need to reimport the tile`set`, which will
+If you make changes to a prefab for tileset tiles, you need to reimport the tileset, which will
 automatically reimport the tilemap as well.
 
 
@@ -460,6 +468,8 @@ Create a new prefab called "Sign", add a child with a ``Canvas`` component, and 
 the ``Text`` component, then disable the Canvas child so it doesn't start visible.
 
 Feel free to make it look fancy; I added a background panel and a custom font.
+
+.. figure:: images/tutorial-sign-prefab.png
 
 Create a new ``Sign`` component, and add it to the root of the "Sign" prefab:
 
@@ -519,8 +529,6 @@ We fetch the ``Sign`` component through ``collider.GetComponentInParent<Sign>()`
 automatically adds one or more child colliders based on a tile's collision shapes to instantiated
 prefabs.
 
-.. figure:: images/tutorial-sign-prefab.png
-
 Back to Tiled; we need to make sure our sign tile has the Type "Sign", and has a full-tile collision
 shape. You can add a default ``string`` Custom Property named "Text", as well; its value will be
 used as sign text if you don't give a sign a specific text.
@@ -529,7 +537,8 @@ used as sign text if you don't give a sign a specific text.
 
 If you have several different sign tiles you want to use, just repeat the process for all of them.
 
-Now, add as many Tile Object Signs as you want, and add or change their "Text" Custom Property.
+Now, add as many Tile Object Signs as you want to your tilemap, and add or change their "Text"
+Custom Property individually.
 
 .. figure:: images/tutorial-unity-signs.gif
 
@@ -568,8 +577,9 @@ Instead of having separate classes and prefabs for Signs and stationary NPCs, we
 	// …
 
 To determine the direction the "Sign" should face, we need to know what ``transform`` is interacting
-with it. Depending on this direction, we select one of the four directional frames for our NPC
-"Sign".
+with it; a ``Transform`` parameter has been added to the ``Interact`` method.
+
+Depending on the direction, we select one of the four directional frames for our NPC "Sign".
 
 KITTY automatically adds a preconfigured ``Animator`` component to the automatic ``SpriteRenderer``
 of every Tiled tile object that's based on an animated tile.
@@ -597,9 +607,10 @@ and they will turn to face the player when interacted with in Unity's Play Mode.
 
 She spins! By default, objects based on animated tiles will play out their full sequence of frames
 in a loop. If you want to have the "Sign" start facing one direction, just set the ``Start`` and
-``End`` parameters of the animator to the same frame number in a ``Start`` method. Remember to check
-whether the GameObject `has` an animator component, first. Tip: Using ``animator?.SetParameter``
-will not call ``SetParameter`` if ``animator == null``.
+``End`` parameters of the animator to the same frame number in a ``Start`` method.
+
+Remember to check whether the GameObject `has` an animator component, first. Tip: Using
+``animator?.SetParameter`` will not call ``SetParameter`` if ``animator == null``.
 
 
 Animating the Player
