@@ -53,32 +53,36 @@ Tileset Images
 ``````````````
 
 Place the tileset images somewhere in the Assets folder, like in ``Assets/Maps/Tutorial``. Ideally,
-the Tiled tilesets and Tilemaps you're going to create will end up here, as well. Keeping
+the Tiled tilesets and tilemaps you're going to create will end up here, as well. Keeping
 map-related images, tilesets, and tilemaps together makes it easier to maintain references and
 update the files as you make your game.
+
+Make sure to change the Texture Type in the image import settings to **Sprite (2D and UI)** –
+this takes care of proper scaling, and is the most fitting texture type for tiles and sprites.
 
 .. figure:: images/tutorial-image-import.png
 	:align: center
 
-	Make sure to change the Texture Type in the image import settings to **Sprite (2D and UI)** –
-	this takes care of proper scaling, and is the most fitting texture type for tiles and sprites.
+	Image import settings
 
-	If you're making a pixel art game, you also want to set the Filter Mode to
-	**Point (no filter)**, and Compression to **None**. This keeps your pixels crisp.
+If you're making a pixel art game, you also want to set the Filter Mode to
+**Point (no filter)**, and Compression to **None**. This keeps your pixels crisp.
 
 Tilesets
 ````````
 
-Create a new Tileset in Tiled for each of your tileset images, and save them in
+Create a new tileset in Tiled for each of your tileset images, and save them in
 ``Assets/Maps/Tutorial`` as well. Tilesets get the extension ``.tmx``, so don't worry about naming
 them differently from the source image's filename.
+
+Make sure to set the **Tile width** and **Tile height** to match the tileset images' tile size.
+If your tileset's tiles have borders around them, you can set the margin and spacing
+accordingly.
 
 .. figure:: images/tutorial-new-tileset.png
 	:align: center
 
-	Make sure to set the **Tile width** and **Tile height** to match the tileset images' tile size.
-	If your tileset's tiles have borders around them, you can set the margin and spacing
-	accordingly.
+	New tileset settings
 
 If you haven't worked with Tiled before, I recommend looking into
 `Using the Terrain Brush <https://docs.mapeditor.org/en/stable/manual/using-the-terrain-tool/>`_ in
@@ -99,7 +103,9 @@ yet – we'll get to those a bit further down. Feel free to add more Tile Layers
 .. figure:: images/tutorial-pewter-city.gif
 	:align: center
 
-	I made a slightly changed Pewter City from Pokémon FireRed/LeafGreen.
+	Modified Pewter City
+
+I made a slightly changed Pewter City from Pokémon FireRed/LeafGreen.
 
 Note that I didn't bother adding signs yet, and I left out some doors. I will add those to an object
 layer later – that way I can directly define the sign texts and door destinations, respectively.
@@ -112,132 +118,145 @@ Initial Unity Import
 
 Go ahead and drop the entire KITTY folder into the root of your Assets folder.
 
-Did you save your tilesets and tilemaps next to your tileset images? If so, the folder contents
-should now look a bit like this:
+If you saved your tilesets and tilemaps next to your tileset images, the folder contents should now
+look a bit like this:
 
 .. figure:: images/tutorial-folder0.png
 	:align: center
 
 	The colourful Tiled icons are tilesets, and the tilemap has been made into a prefab.
 
-You can drop the tilemap prefab directly into the Hierarchy to see your work in the Scene View.
+You can drop the tilemap prefab directly into the **Hierarchy** to see your work in the **Scene**
+view.
 
-Whenever you update your tilesets or tilemaps, or edit your tileset images, they automatically get
-reimported.
+.. Note:: Whenever you update your tilesets or tilemaps, or edit your tileset images, they
+	automatically get reimported.
 
-If you go into Play Mode now, any animated tiles will animate, but nothing else really happens.
+If you go into **Play Mode** now, any animated tiles will animate, but nothing else really happens.
 We're going to change that!
 
 
 Player Object
 -------------
 
-Of course, there are no objects yet – not even a Player. Let's add a small character from a
-spritesheet, ideally with a few walking animation frames for each of the four directions. I went
-with Leaf from Pokémon FireRed/LeafGreen.
+Of course, there are no objects yet – not even a :guilabel:`Player`. Let's add a small character
+from a spritesheet, ideally with a few walking animation frames for each of the four directions. I went
+with `Leaf` from `Pokémon FireRed/LeafGreen`.
 
 Character and object spritesheets don't need to have the same tile size as the tilemap, as they're
-not part of the grid. Leaf's spritesheet, for example, uses 16×32 pixel "tiles" for each animation
+not part of the grid. `Leaf`'s spritesheet, for example, uses 16×32 pixel sprites for each animation
 frame.
 
-We can insert "tiles" of any size anywhere in the map as objects by adding an Object Layer. I called
-my layer "Characters", added a Tile Object of Leaf from the character spritesheet, and set the
-object's name to "Leaf". You don't have to give your objects names, but since they carry over to
-Unity, it will be easier to tell them apart if you do.
+We can insert sprites of any size anywhere in the map as objects by adding an Object Layer. I called
+my layer :guilabel:`Characters`, added a Tile Object of `Leaf` from the character spritesheet, and
+set the object's name to :guilabel:`Leaf`. You don't have to give your objects names, but since they
+carry over to Unity, it will be easier to tell them apart if you do.
 
 .. figure:: images/tutorial-leaf-object.png
 	:align: center
 
+	Player object in Tiled
+
 So far, so good. When you switch to Unity now, you'll see your character gets created as a
-GameObject with the name you specified, followed by an object ID. A SpriteRenderer child has
-automatically been added, and the GameObject even a small name label.
+``GameObject`` with the name you specified, followed by an object ID. A ``SpriteRenderer`` child has
+automatically been added, and the ``GameObject`` even a small name label.
 
 .. figure:: images/tutorial-leaf-gameobject.png
 	:align: center
 
-That's all well and good, but the player doesn't do anything, and adding every component manually to
+	Player object in Unity
+
+That's all well and good, but the player doesn't do anything, and adding components manually to
 every object that needs any will get tedious quickly.
 
 Player Prefab
 `````````````
 
-KITTY automatically generates a SpriteRenderer for us, and if your character "tile" already has an
-animation defined, the Renderer child will have a fully configured Animator component as well. You
-could even go so far as to add collision shapes to your character "tile", which would generate a
-PolygonCollider2D for each shape, but you won't need to do that for your character in this tutorial.
+KITTY automatically generates a ``SpriteRenderer`` for us, and if your character sprite already has
+an animation defined, the :guilabel:`Renderer` child will have a fully configured ``Animator``
+component as well. You could even go so far as to add collision shapes to your character sprite,
+which would generate a ``PolygonCollider2D`` for each shape, but you won't need to do that for your
+character in this tutorial.
 
-The ability to control how Tiled objects are translated to GameObjects is the primary feature of
+The ability to control how Tiled objects are translated to ``GameObject``s is the primary feature of
 KITTY, however!
 
-Let's have the Camera on the Player GameObject instead of at the root of the scene.
+Let's have the ``Camera`` component on the :guilabel:`Player` ``GameObject`` instead of at the root
+of the scene.
 
-Start by removing the Main Camera GameObject from the scene. This will make the Game View complain
-about a missing Camera.
+Start by removing the :guilabel:`Main Camera` ``GameObject`` from the scene. This will make the
+**Game** view complain about a missing ``Camera``.
 
-Add an empty GameObject to the scene; this will become our Player prefab. Drag it from the scene
-Hierarchy to the Project view to save it as a prefab asset – anywhere in the Assets folder is fine,
-but let's drag it into ``Assets/Maps/Tutorial`` for now. It's important to name it "Player" or
-something similar, because KITTY uses prefab names to translate from Tiled objects to GameObjects.
+Add an empty ``GameObject`` to the scene; this will become our :guilabel:`Player` prefab. Drag it
+from the scene **Hierarchy** to the **Project** view to save it as a prefab asset – anywhere in the
+``Assets`` folder is fine, but let's drag it into ``Assets/Maps/Tutorial`` for now. It's important
+to name it :guilabel:`Player` or something similar, because KITTY uses prefab names to translate
+from Tiled objects to ``GameObject``s.
 
-Now that you have your empty Player prefab in your Assets folder, go ahead and delete the instance
-from the scene, then double click the prefab to enter Prefab Edit Mode.
+Now that you have your empty :guilabel:`Player` prefab in your ``Assets`` folder, go ahead and
+delete the :guilabel:`Player` instance from the scene, then double click the prefab to enter
+**Prefab Edit Mode**.
 
-Add an empty child GameObject named "Camera" to the prefab, and set its position to (0.5, 0.5, -10);
-every tile and object imported from Tiled is created at its bottom left position, so to center the
-Camera child on the Player character, it needs to be offset by half the width of a "tile" in your
-spritesheet. The `-10` Z-position is just to make sure the Camera doesn't near-clip the tilemap and
-all the objects.
+Add an empty child ``GameObject`` named :guilabel:`Camera` to the prefab, and set its position to
+``(0.5, 0.5, -10)``; every tile and object imported from Tiled is created at its bottom left
+position, so to center the :guilabel:`Camera` child on the :guilabel:`Player` character, it needs to
+be offset by half the width of a "tile" in your spritesheet. The ``-10`` Z-position is just to make
+sure the ``Camera`` doesn't clip the tilemap and all its objects.
 
-Finally for now, add a Camera component to the new Camera child, and set its Projection to
-Orthographic.
+Finally for now, add a ``Camera`` component to the new :guilabel:`Camera` child, and set its
+Projection to **Orthographic**.
 
 .. figure:: images/tutorial-camera-inspector.png
 	:align: center
 
-We'll return to the Player prefab to add more functionality later!
+We'll return to the :guilabel:`Player` prefab to add more functionality later!
 
-If you want objects based on your new prefab to still have a label, you can choose a label in the
-icon dropdown of your root Player GameObject in the top left corner of the inspector.
+.. Note:: If you want objects based on your new prefab to still have a label, you can choose a label
+	in the icon dropdown of your root :guilabel:`Player` ``GameObject`` in the top left corner of
+	the inspector.
 
 Typed Objects
 `````````````
 
-To let KITTY know that the character you added to the "Characters" object layer in Tiled should use
-your new Player prefab for instantiation, all you need to do is set the "Type" property of the
-object in Tiled.
+To let KITTY know that the character you added to the :guilabel:`Characters` object layer in Tiled
+should use your new Player prefab for instantiation, all you need to do is set the **Type** property
+of the object in Tiled.
 
 .. figure:: images/tutorial-player-object.png
 	:align: center
 
-Switching back to Unity, your Game View now shows the "game" with your character in the center.
+Switching back to Unity, your **Game** view now shows the "game" with your character in the center.
 
-This approach – creating a named prefab (or prefab variant) and setting the "Type" property of an
-object or even a tile in Tiled – is the core way of defining the specific behaviours of your game.
+.. Note:: This approach – creating a named prefab (or prefab variant) and setting the "Type"
+	property of an object or even a tile in Tiled – is the core way of defining the specific
+	behaviours of your game.
 
 
 Movement Script
 ---------------
 
-Now we actually get to add game-specific behaviour to our game. First up is player movement.
+Now we actually get to add game-specific behaviour to our game. First up is :guilabel:`Player`
+movement.
 
 Adding Behaviours to Objects
 ````````````````````````````
 
-Whenever a tile or object in Tiled has the Type "Player", KITTY loads your Player prefab in its
-place. This holds true for any typed Tiled object/Unity prefab combination with matching names.
+Whenever a tile or object in Tiled has the **Type** :guilabel:`Player`, KITTY loads your
+:guilabel:`Player` prefab in its place. This holds true for any typed Tiled object/Unity prefab
+combination with matching names.
 
-To define behaviours for objects, you simply add the components and child GameObjects you need to
-the prefab that matches the object you want to define behaviours for.
+To define behaviours for objects, you simply add the components and child ``GameObject``s you need
+to the prefab that matches the object **Type** you want to define behaviours for.
 
 Grid Movement
 `````````````
 
-Let's make the Player able to move by pressing the arrow keys (or any other directional
+Let's make the :guilabel:`Player` able to move by pressing the arrow keys (or any other directional
 input, like WASD or a joypad). For this tutorial, the player can move either horisontally or
 vertically, but not both at the same time.
 
-Create a new C# script called ``GridController`` somewhere in your assets folder with the following
-contents:
+Create a new C# script called ``GridController`` somewhere in your ``Assets`` folder with the
+following contents:
 
 .. code-block:: c#
 	:caption: GridController.cs
@@ -257,22 +276,25 @@ contents:
 		}
 	}
 
-Note that I'm using ``Input.GetAxisRaw`` to get the raw input data – either ``-1``, ``0``, or ``1``
-for each axis.
+.. Note:: I'm using ``Input.GetAxisRaw`` to get the raw input data – either ``-1``, ``0``, or ``1``
+	for each axis.
 
-Now just add this new GridController component to your Player prefab by double-clicking the prefab
-asset, and dragging or adding the component to the prefab's root GameObject (called Player).
-Reimport your tilemap to make Unity apply the changes to your Player prefab.
+Now just add this new ``GridController`` component to your guilabel:`Player` prefab by
+double-clicking the prefab asset, and dragging or adding the component to the prefab's root
+``GameObject`` (called :guilabel:`Player`). Reimport your tilemap to make Unity apply the changes to
+your :guilabel:`Player` prefab.
 
 .. figure:: images/tutorial-grid-movement.gif
 	:align: center
 
-	Tile widths in KITTY are always exactly one Unity unit wide, so moving one unit in any direction
-	corresponds exactly to moving one tile in that direction. Because we're always adding integers,
-	the character position doesn't suffer from floating point inaccuracies.
+	Moving one tile per frame
 
-If you go into Play Mode, the character moves when you give it directional input, and it also stays
-exactly on the tile positions – but it's way too fast, potentially moving one tile per frame!
+Tile widths in KITTY are always exactly one Unity unit wide, so moving one unit in any direction
+corresponds exactly to moving one tile in that direction. Because we're always adding integers,
+the character position doesn't suffer from floating point inaccuracies.
+
+If you go into **Play Mode**, the character moves when you give it directional input, and it also
+stays exactly on the tile positions – but it's way too fast, potentially moving one tile per frame!
 
 Continuous Movement
 ```````````````````
@@ -281,8 +303,8 @@ When receiving directional input, we want the character to move a little bit eve
 reaches the next tile. There are many ways to make things happen over time, but this is a KITTY
 tutorial, not a C# or Unity tutorial.
 
-Let's just add a small ``Walk`` method in our GridController class that does everything we want; it
-moves the character a little bit each frame until it reaches the next tile.
+Let's just add a small ``Walk`` method in our ``GridController`` class that does everything we want;
+it moves the character a little bit each frame until it reaches the next tile.
 
 We'll be using an ``IEnumerator`` to call the method as a coroutine, so you need to add
 ``using System.Collections`` to the top of the file, as well.
@@ -333,6 +355,8 @@ of running all the code immediately.
 .. figure:: images/tutorial-continuous-movement.gif
 	:align: center
 
+	Moving one pixel per frame
+
 This is very useful to us, since we want to move a little bit, wait for the next frame, and then
 move a little bit more – until we reach the target tile.
 
@@ -340,17 +364,17 @@ move a little bit more – until we reach the target tile.
 Colliders and Collision
 -----------------------
 
-The player is currently unstoppable; there's nothing to collide against, and no collisions ever
-happen.
+The :guilabel:`Player` is currently unstoppable; there's nothing to collide against, and no
+collisions ever happen.
 
 Colliders
 `````````
 
-KITTY natively understands collision shapes defined in Tiled tilesets, and turns them into
-Sprite Physics Shapes – sprite/tile colliders. The entire tilemap has a ``CompositeCollider`` that
-composes all the individual tile colliders into one, for performance reasons.
+KITTY natively understands Collision Shapes defined in Tiled tilesets, and turns them into
+Sprite Physics Shapes – sprite/tile ``Collider``s. The entire tilemap has a ``CompositeCollider``
+component that composes all the individual tile layer colliders into one, for performance reasons.
 
-This also means you can't query *what* tile an object collided with, as Unity sees them all as the
+This also means you can't query `what` tile an object collided with, as Unity sees them all as the
 same, full-map composite collider. That's fine for simple non-interactive collision shapes, though.
 
 Since we're making a grid-based topdown game, square collision shapes will suffice.
@@ -361,30 +385,31 @@ start drawing full-tile collision shapes for all the tiles that should be collid
 .. figure:: images/tutorial-collision-shapes.gif
 	:align: center
 
-By defining the collisions in the tileset rather than the tilemap, the collision shapes are reused;
+	Adding tile Collision Shapes in the tileset
+
+By defining the collisions in the tileset rather than the tilemap, the Collision Shapes are reused;
 you only need to define them once for each tile in the tileset, instead of having to make sure every
 collidable tile in your tilemap has a collider defined.
 
-This is the reason KITTY imports tile collision shapes, but not object shapes, as colliders.
+This is the reason KITTY imports tile Collision Shapes, but not object shapes, as colliders.
 
-Back in Unity, the tilemap now has a collider with all the collision shapes you defined.
+Back in Unity, the tilemap now has a ``Collider`` with all the Collision Shapes you defined.
 
 .. figure:: images/tutorial-tilemap-collider.png
 	:align: center
 
-	It's quite difficult to see the collider; I lowered the tilemap opacity to make the collider
-	more visible in the Scene View.
+	I lowered the tilemap opacity to make the ``Collider`` more visible in the **Scene** view.
 
 Collision
 `````````
 
-Your entire tilemap automatically got a full-map collider in Unity by just defining a few tile
-collision shapes in your Tiled tileset. Neat.
+Your entire tilemap automatically got a full-map ``Collider`` in Unity by just defining a few tile
+Collision Shapes in your Tiled tileset. Neat.
 
-The collider doesn't stop the player yet, though. One way of making GameObjects interact with
-colliders in Unity is to add a ``Collider2D`` and a ``Rigidbody2D`` component, but since we don't
-need physics, just collisions, we can instead add a simple collision check around the ``Walk``
-method's movement loop in our ``GridController`` class:
+The ``Collider`` doesn't stop the :guilabel:`Player` yet, though. One way of making ``GameObject``s
+interact with ``Collider``s in Unity is to add a ``Collider2D`` and a ``Rigidbody2D`` component, but
+since we don't need physics, just collisions, we can instead add a simple collision check around the
+``Walk`` method's movement loop in our ``GridController`` class:
 
 .. code-block:: c#
 	:caption: GridController.cs
@@ -407,33 +432,36 @@ method's movement loop in our ``GridController`` class:
 	}
 	// …
 
-This code addition simply makes sure we only run the movement loop if the player wouldn't collide
-with anything at the target position.
+This code addition simply makes sure we only run the movement loop if the :guilabel:`Player` won't
+collide with anything at the target position.
 
 .. figure:: images/tutorial-collision.gif
 	:align: center
 
-	If you enter Play Mode now, the player character is no longer be able to pass through the tiles
-	you defined collision shapes for in your tilesets.
+	Collisions limit :guilabel:`Player` movement
+
+If you enter **Play Mode** now, the :guilabel:`Player` character is no longer be able to pass
+through the tiles you defined Collision Shapes for in your tilesets.
 
 
 Occlusion with Tile Masks
 -------------------------
 
-A non-essential improvement we can make is to let the player walk behind/under things like roofs and
-treetops – since my "Characters" layer is on top of all other layers, the player character currently
-renders on top of everything.
+A non-essential improvement we can make is to let the :guilabel:`Player` walk behind/under things
+like roofs and treetops – since my :guilabel:`Characters` layer is on top of all other layers, the
+:guilabel:`Player` character currently renders on top of everything.
 
-You *could* add another Tile Layer above the "Characters" layer, and make sure everything that
-should occlude the player character is placed in that layer, and not its original layer.
+You `could` add another Tile Layer above the :guilabel:`Characters` layer, and make sure everything
+that should occlude the :guilabel:`Player` character is placed in that layer, and not its original
+layer.
 
 I find non-semantic layers like that tedious, repetitious, and error-prone, though.
 
 Let's define occluding tiles directly in the tileset, instead; we'll use a prefab with a
-``SpriteMask`` component, and a small script that synchronises the ``SpriteMask``'s sprite with the
-automatically generated ``SpriteRenderer``'s sprite.
+``SpriteMask`` component, and a small script that synchronises the ``SpriteMask``'s ``Sprite`` with
+the automatically generated ``SpriteRenderer``'s ``Sprite``.
 
-Create a script called `TileMask`:
+Create a script called ``TileMask``:
 
 .. code-block:: c#
 	:caption: TileMask.cs
@@ -452,33 +480,35 @@ Create a script called `TileMask`:
 		}
 	}
 
-Since the sprite's pivot will be read as centered, the transform's ``localPosition`` is moved to the
-center of the sprite to align it with the source tile.
+Since the ``Sprite``'s pivot will be read as centered, the ``Transform``'s ``localPosition`` is moved
+to the center of the ``Sprite`` to align it with the source tile.
 
-Now create a new prefab called "Mask", and add your new ``TileMask`` component to it. A
+Now create a new prefab called :guilabel:`Mask`, and add your new ``TileMask`` component to it. A
 ``SpriteMask`` component will automatically be added as well, because of the ``RequireComponent``
 class attribute.
 
-Finally, in your tileset in Tiled, select all tiles that should occlude objects, and set their Type
-to "Mask". This will make KITTY instantiate your new "Mask" prefab at every one of those tiles'
-positions in your tilemap.
+Finally, in your tileset in Tiled, select all tiles that should occlude objects, and set their
+**Type** to :guilabel:`Mask`. This will make KITTY instantiate your new :guilabel:`Mask` prefab at
+every one of those tiles' positions in your tilemap.
 
 .. figure:: images/tutorial-mask.gif
 	:align: center
 
+	The :guilabel:`Player` is masked by the :guilabel:`Mask` tiles.
+
 This approach of defining the occlusion directly in the tileset means you avoid repeating the
 occlusion definition, don't have to wrestle with multiple layers, and can't forget to make a tile in
-the tilemap occlude the player.
+the tilemap occlude the :guilabel:`Player`.
 
-If you make changes to a prefab for tileset tiles, you need to reimport the tileset, which will
-automatically reimport the tilemap as well.
+.. Note:: If you make changes to a prefab for tileset tiles, you need to reimport the tileset, which
+	will automatically reimport the tilemap as well.
 
 
 Interactions
 ------------
 
-We have a working prototype for a playable game, now! There's no way for the player to interact with
-the world, though. Let's add signs the player can read.
+We have a working prototype for a playable game, now! There's no way for the :guilabel:`Player` to
+interact with the world, though. Let's add signs the :guilabel:`Player` can read.
 
 Custom Properties
 `````````````````
@@ -492,16 +522,19 @@ through the ``[TiledProperty]`` attribute. We'll use that to define the text on 
 Simple Sign
 ```````````
 
-Create a new prefab called "Sign", add a child with a ``Canvas`` component, and a child with a
-``Text`` component to the Canvas child. Configure the text to be visible when there's a few lines in
-the ``Text`` component, then disable the Canvas child so it doesn't start visible.
+Create a new prefab called :guilabel:`Sign`, add a child with a ``Canvas`` component, and add a
+child with a ``Text`` component to the :guilabel:`Canvas` child. Configure the text to be visible
+even when there's a few lines in the ``Text`` component, then disable the :guilabel:`Canvas` child
+``GameObject`` so it doesn't start visible.
 
 Feel free to make it look fancy; I added a background panel and a custom font.
 
 .. figure:: images/tutorial-sign-prefab.png
 	:align: center
 
-Create a new ``Sign`` component, and add it to the root of the "Sign" prefab:
+	My :guilabel:`Sign` prefab
+
+Create a new ``Sign`` component, and add it to the root of the :guilabel:`Sign` prefab:
 
 .. code-block:: c#
 	:caption: Sign.cs
@@ -526,19 +559,20 @@ Create a new ``Sign`` component, and add it to the root of the "Sign" prefab:
 		}
 	}
 
-Remember to add a reference to your Canvas GameObject in the ``Sign`` component's inspector.
+Remember to add a reference to your :guilabel:`Canvas` ``GameObject`` in the ``Sign`` component's
+inspector.
 
-The ``[TiledProperty]`` attribute lets us assign the value of any Custom Property named "Text"
+The ``[TiledProperty]`` attribute lets us assign the value of any Custom Property named **Text**
 (case-insensitive, ignoring whitespace) directly from an object or tile in Tiled directly to our
-``string text`` property. `Nice`.
+``public string text`` property. `Nice`.
 
-We're returning an IEnumerator again, because we want the ``GridController`` to wait for the "Fire1"
-button to be pressed before enabling its ``Update`` method again. The default "Fire1" buttons are
-Ctrl, left mouse button, and joypad button 1.
+We're returning an ``IEnumerator`` again, because we want the ``GridController`` to wait for the
+"Fire1" button to be pressed before enabling its ``Update`` method again. The default "Fire1"
+buttons are Ctrl, left mouse button, and joypad button 1.
 
 We need to add a few lines of code to the ``GridController`` class as well. It needs to wait for the
 ``Interact`` coroutine to finish when there `is` a BoxCast hit, `and` the collider that was hit also
-has a `Sign` component. Put this in the ``if (hit)``-block:
+has a ``Sign`` component.
 
 .. code-block:: c#
 	:caption: GridController.cs
@@ -559,37 +593,43 @@ method will now wait for the ``Sign``'s ``Interact`` method to complete before e
 ``GridController``'s ``Update`` method again with ``enabled = true;``
 
 We fetch the ``Sign`` component through ``collider.GetComponentInParent<Sign>()`` because KITTY
-automatically adds one or more child colliders based on a tile's collision shapes to instantiated
-prefabs.
+automatically adds one or more child ``Collider``s – based on a tile's Collision Shapes – to
+instantiated prefabs.
 
-Back to Tiled; we need to make sure our sign tile has the Type "Sign", and has a full-tile collision
-shape. You can add a default ``string`` Custom Property named "Text", as well; its value will be
-used as sign text if you don't give a sign a specific text.
+Back to Tiled; we need to make sure our sign tile has the **Type** :guilabel:`Sign`, and has a
+full-tile Collision Shape. You can add a default ``string`` Custom Property named **Text**, as well;
+its value will be used as sign text if you don't give a sign a specific text.
 
 .. figure:: images/tutorial-sign-properties.png
 	:align: center
 
+	Properties for :guilabel:`Sign` tile
+
 If you have several different sign tiles you want to use, just repeat the process for all of them.
 
-Now, add as many Tile Object Signs as you want to your tilemap, and add or change their "Text"
+Now, add as many Tile Object Signs as you want to your tilemap, and add or change their **Text**
 Custom Property individually.
 
 .. figure:: images/tutorial-unity-signs.gif
 	:align: center
 
-Switch back to Unity, enter Play Mode, and walk into a sign; with a few lines of code and a single
-Custom Property, you're now able to interact with the game world!
+	Signs showing a text box and waiting for input
+
+Switch back to Unity, enter **Play Mode**, and walk into a sign; with a few lines of code and a
+single Custom Property, you're now able to interact with the game world!
 
 
 Directional "Sign"
 ``````````````````
 
-Before we start animating the player, let's improve our ``Sign`` component a bit; depending on how
-you look at it, a stationary NPC that faces the player when speaking is really just a "Directional
-Sign". I went with four directional sprites of May from Pokémon FireRed/LeafGreen/FireRed.
+Before we start animating the :guilabel:`Player`, let's improve our ``Sign`` component a bit;
+depending on how you look at it, a stationary NPC that faces the :guilabel:`Player` when speaking is
+really just a `Directional "Sign"`. For my NPC, I went with four directional sprites of `May` from
+`Pokémon FireRed/LeafGreen`.
 
-Instead of having separate classes and prefabs for Signs and stationary NPCs, we can just make our
-``Sign`` component face the player if it has different tiles, or `frames`, for the four directions:
+Instead of having separate classes and prefabs for :guilabel:`Sign`s and stationary NPCs, we can
+just make our ``Sign`` component face the :guilabel:`Player` if it has different frames for the four
+directions.
 
 .. code-block:: c#
 	:caption: Sign.cs
@@ -613,63 +653,72 @@ Instead of having separate classes and prefabs for Signs and stationary NPCs, we
 	}
 	// …
 
-To determine the direction the "Sign" should face, we need to know what ``transform`` is interacting
-with it; a ``Transform`` parameter has been added to the ``Interact`` method.
+To determine the direction the guilabel:`"Sign"` should face, we need to know what ``Transform`` is
+interacting with it; so, a ``Transform`` parameter has been added to the ``Interact`` method.
 
-Depending on the direction, we select one of the four directional frames for our NPC "Sign".
+Depending on the direction, we select one of the four directional frames for our NPC
+:guilabel:`"Sign"`.
 
-KITTY automatically adds a preconfigured ``Animator`` component to the automatic ``SpriteRenderer``
-of every Tiled tile object that's based on an animated tile.
+KITTY automatically adds a preconfigured ``Animator`` component to the automatically created
+:guilabel:`Renderer` ``GameObject`` of every Tiled tile object that's based on an animated tile.
 
 We can set a subsequence of frames for this ``Animator`` at any time by specifying its ``Start`` and
 ``End`` properties. By setting both to the same value, the "animation" effectively turns into a
 single frame – the directional frame we want.
 
-The ``GridController`` needs to pass in its ``transform`` when calling ``Interact``, too:
+The ``GridController`` needs to pass in its ``Transform`` when calling ``Interact``, too.
 
 .. code-block:: c#
 	:caption: GridController.cs
 
 	var interaction = hit.collider.GetComponentInParent<Sign>()?.Interact(transform);
 
-The only thing you need to do in Tiled is to define a short animation for your NPC "Sign", with one
-frame for each of the four directions, and make sure the main tile has the Type "Sign" and a defined
-collision shape.
+The only thing you need to do in Tiled is to define a short animation for your NPC
+:guilabel:`"Sign"`, with one frame for each of the four directions. Make sure the main tile has the
+**Type** :guilabel:`Sign`, and a defined collision shape.
 
 .. figure:: images/tutorial-npc-animation.gif
 	:align: center
 
-Place a few NPC "Signs", add a ``string`` Custom Property named "Text" with whatever text you want,
-and they will turn to face the player when interacted with in Unity's Play Mode.
+	Four animation frames; one for each direction
+
+Place a few NPC :guilabel:`"Sign"`s, add a ``string`` Custom Property named **Text** with whatever
+text you want, and they will turn to face the :guilabel:`Player` when interacted with in Unity's
+**Play Mode**.
 
 .. figure:: images/tutorial-unity-npc.gif
 	:align: center
 
-She spins! By default, objects based on animated tiles will play out their full sequence of frames
-in a loop. If you want to have the "Sign" start facing one direction, just set the ``Start`` and
-``End`` parameters of the animator to the same frame number in a ``Start`` method.
+	NPC :guilabel:`"Sign"` in action
 
-Remember to check whether the GameObject `has` an animator component, first. Tip: Using
-``animator?.SetParameter`` will not call ``SetParameter`` if ``animator == null``.
+She spins! By default, objects based on animated tiles will play out their full sequence of frames
+in a loop. If you want to have the :guilabel:`"Sign"` start facing one direction, just set the
+``Start`` and ``End`` parameters of the ``Animator`` to the same frame number in a ``Start`` method.
+
+Remember to check whether the ``GameObject`` `has` an ``Animator`` component, first.
+
+.. Tip:: Using ``animator?.SetParameter`` will not call ``SetParameter`` if ``animator == null``.
 
 
 Animating the Player
 --------------------
 
-We'll use the same approach as the directional "sign" for animating the player; Setting the
-``Start`` and ``End`` parameters of an automatically created child ``Animator`` component to select
-animation sequences.
+We'll use the same approach as the directional :guilabel:`"Sign"` for animating the
+:guilabel:`Player`; setting the ``Start`` and ``End`` parameters of the automatically created child
+``Animator`` component to select animation sequences.
 
 .. figure:: images/tutorial-leaf.gif
 	:align: center
 
-	Leaf from Pokémon FireRed/LeafGreen has three walking frames for each of the four
-	directions, but her actual animation uses the middle frame twice.
+	:guilabel:`Player` sprite animation
+
+`Leaf` from `Pokémon FireRed/LeafGreen` has three walking frames for each of the four directions,
+but her actual animation uses the middle frame twice.
 
 Facing
 ``````
 
-Since Leaf has four walking frames per direction in her defined tile animation, the frame indices
+Since `Leaf` has four walking frames per direction in her defined tile animation, the frame indices
 for each direction have a stride of four instead of one. In our ``GridController``'s ``Walk``
 method:
 
@@ -690,7 +739,7 @@ method:
 	// …
 
 Now that we have a frame offset for the direction, we can set a static frame facing that direction
-if the player collides with something:
+if the :guilabel:`Player` collides with anything:
 
 .. code-block:: c#
 	:caption: GridController.cs
@@ -703,12 +752,12 @@ if the player collides with something:
 		animator?.SetInteger("End", frame + 1);
 	// …
 
-I add ``1`` to the frame offset because Leaf's animation frames are left-foot, center, right-foot,
-center, and I want her static frame to be a center frame.
+I add ``1`` to the frame offset because Leaf's animation frames are `left-foot`, `center`,
+`right-foot`, `center`, and I want her static frame to be a center frame.
 
-It's important to set the animator parameters `before` a potential ``Interact`` coroutine is
-started; that way, the player will face a sign, an NPC, or any other interactable object while
-waiting for the ``Interact`` coroutine to finish.
+It's important to set the ``Animator`` parameters `before` a potential ``Interact`` coroutine is
+started; that way, the :guilabel:`Player` will face a :guilabel:`Sign`, an NPC, or any other
+interactable object while waiting for the ``Interact`` coroutine to finish.
 
 Animation
 `````````
@@ -745,9 +794,11 @@ lines of code. Wonderful!
 .. figure:: images/tutorial-animation.gif
 	:align: center
 
-	Leaf, like May, initially plays her entire animation sequence in a loop. If you want to have
-	your character face a specific direction from the start instead, just both set the ``Start`` and
-	``End`` parameters to the frame index you want in a ``Start`` method.
+	Walking animation plays when the :guilabel:`Player` moves
+
+.. Note:: Leaf, like May, initially plays her entire animation sequence in a loop. If you want to
+	have your character face a specific direction from the start instead, just both set the
+	``Start`` and ``End`` parameters to the frame index you want in a ``Start`` method.
 
 
 Recap
@@ -764,19 +815,23 @@ We don't really have that many files, despite having a small functioning game.
 
 .. figure:: images/tutorial-recap-files.png
 	:align: center
+
+	**Project** folder contents
 	
-	The contents of my ``Assets/Maps/Tutorial`` folder looks like this. Yours should be roughly
-	similar, though probably with a different number of tilesets and images.
+The contents of my ``Assets/Maps/Tutorial`` folder looks like this. Yours should be roughly
+similar, though probably with a different number of tilesets and images.
 
 Scene Hierarchy
 ```````````````
 
-The scene hierarchy just contains the tilemap prefab, and nothing else.
+The scene **Hierarchy** just contains the tilemap prefab, and nothing else.
 
 .. figure:: images/tutorial-recap-scene.png
 	:align: center
 
-As you can see, there are no floating GameObjects to keep track of. I recommend making one fully
+	Final scene **Hierarchy**
+
+As you can see, there are no floating ``GameObject``s to keep track of. I recommend making one fully
 self-contained scene per tilemap – that way, you can change mechanics as you see fit from one map
 to the next.
 
@@ -922,9 +977,11 @@ You should be able to build on what you've made with this tutorial.
 
 For your next step, I have a few suggestions:
 
-- Make doors "warp" the player to different maps simply by loading entire scenes by their name
-- Expand the text boxes used for signs to support multiple pages, prompts, variables, and so on
-- Add NPCs that randomly walk around
+- Make :guilabel:`Door`s "warp" the :guilabel:`Player` to different maps simply by loading entire
+scenes by their name
+- Expand the text boxes used for :guilabel:`Sign`s to support multiple pages, prompts, variables,
+and so on
+- Add :guilabel:`NPC`s that walk around randomly
 
 KITTY Examples
 ``````````````
@@ -946,5 +1003,4 @@ KITTY is just a hobby project I've been working on for a while.
 It means a lot to me that you got through this tutorial, so thank you.
 
 If you spot anything weird or wrong in this tutorial, or you find a bug or missing feature in KITTY,
-you're welcome to `contact me
-<mailto:emma.o.ewert@gmail.com>`_.
+you're welcome to `contact me <mailto:emma.o.ewert@gmail.com>`_.

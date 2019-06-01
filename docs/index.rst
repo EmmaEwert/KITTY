@@ -20,6 +20,7 @@ warps, and pickups directly in Tiled. KITTY just imports and applies all that se
    :maxdepth: 2
    :caption: Contents:
 
+   manual/getting_started
    manual/tilesets_and_tilemaps
    manual/prefabs
    manual/properties
