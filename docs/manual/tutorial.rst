@@ -13,6 +13,9 @@ The end result is a grid-based, animated character controller able to interact w
 and doors which are all defined in Tiled. It plays like this:
 
 .. figure:: images/tutorial-teaser.gif
+	:align: center
+
+	Tutorial teaser
 
 Keep in mind that this is just an example project to get you started; KITTY can do much, much
 more than what this tutorial teaches.
@@ -54,13 +57,14 @@ the Tiled tilesets and Tilemaps you're going to create will end up here, as well
 map-related images, tilesets, and tilemaps together makes it easier to maintain references and
 update the files as you make your game.
 
-Make sure to change the Texture Type in the image import settings to **Sprite (2D and UI)** – this
-takes care of proper scaling, and is the most fitting texture type for tiles and sprites.
-
 .. figure:: images/tutorial-image-import.png
+	:align: center
 
-If you're making a pixel art game, you also want to set the Filter Mode to **Point (no filter)**,
-and Compression to **None**. This keeps your pixels crisp.
+	Make sure to change the Texture Type in the image import settings to **Sprite (2D and UI)** –
+	this takes care of proper scaling, and is the most fitting texture type for tiles and sprites.
+
+	If you're making a pixel art game, you also want to set the Filter Mode to
+	**Point (no filter)**, and Compression to **None**. This keeps your pixels crisp.
 
 Tilesets
 ````````
@@ -69,10 +73,12 @@ Create a new Tileset in Tiled for each of your tileset images, and save them in
 ``Assets/Maps/Tutorial`` as well. Tilesets get the extension ``.tmx``, so don't worry about naming
 them differently from the source image's filename.
 
-Make sure to set the **Tile width** and **Tile height** to match the tileset images' tile size. If
-your tileset's tiles have borders around them, you can set the margin and spacing accordingly.
-
 .. figure:: images/tutorial-new-tileset.png
+	:align: center
+
+	Make sure to set the **Tile width** and **Tile height** to match the tileset images' tile size.
+	If your tileset's tiles have borders around them, you can set the margin and spacing
+	accordingly.
 
 If you haven't worked with Tiled before, I recommend looking into
 `Using the Terrain Brush <https://docs.mapeditor.org/en/stable/manual/using-the-terrain-tool/>`_ in
@@ -89,9 +95,11 @@ Now that you have some tilesets, it's time to make a tilemap!
 Anything goes, really. You don't have to worry about interactable stuff like signs or NPCs just
 yet – we'll get to those a bit further down. Feel free to add more Tile Layers if you need them.
 
-I made a slightly changed Pewter City from Pokémon FireRed/LeafGreen:
 
 .. figure:: images/tutorial-pewter-city.gif
+	:align: center
+
+	I made a slightly changed Pewter City from Pokémon FireRed/LeafGreen.
 
 Note that I didn't bother adding signs yet, and I left out some doors. I will add those to an object
 layer later – that way I can directly define the sign texts and door destinations, respectively.
@@ -108,9 +116,11 @@ Did you save your tilesets and tilemaps next to your tileset images? If so, the 
 should now look a bit like this:
 
 .. figure:: images/tutorial-folder0.png
+	:align: center
 
-The colourful Tiled icons are tilesets, and the tilemap has been made into a prefab. You can drop
-that directly into the Hierarchy to see your work in the Scene View.
+	The colourful Tiled icons are tilesets, and the tilemap has been made into a prefab.
+
+You can drop the tilemap prefab directly into the Hierarchy to see your work in the Scene View.
 
 Whenever you update your tilesets or tilemaps, or edit your tileset images, they automatically get
 reimported.
@@ -136,12 +146,14 @@ object's name to "Leaf". You don't have to give your objects names, but since th
 Unity, it will be easier to tell them apart if you do.
 
 .. figure:: images/tutorial-leaf-object.png
+	:align: center
 
 So far, so good. When you switch to Unity now, you'll see your character gets created as a
 GameObject with the name you specified, followed by an object ID. A SpriteRenderer child has
 automatically been added, and the GameObject even a small name label.
 
 .. figure:: images/tutorial-leaf-gameobject.png
+	:align: center
 
 That's all well and good, but the player doesn't do anything, and adding every component manually to
 every object that needs any will get tedious quickly.
@@ -180,6 +192,7 @@ Finally for now, add a Camera component to the new Camera child, and set its Pro
 Orthographic.
 
 .. figure:: images/tutorial-camera-inspector.png
+	:align: center
 
 We'll return to the Player prefab to add more functionality later!
 
@@ -194,6 +207,7 @@ your new Player prefab for instantiation, all you need to do is set the "Type" p
 object in Tiled.
 
 .. figure:: images/tutorial-player-object.png
+	:align: center
 
 Switching back to Unity, your Game View now shows the "game" with your character in the center.
 
@@ -226,6 +240,7 @@ Create a new C# script called ``GridController`` somewhere in your assets folder
 contents:
 
 .. code-block:: c#
+	:caption: GridController.cs
 
 	using UnityEngine;
 
@@ -249,11 +264,12 @@ Now just add this new GridController component to your Player prefab by double-c
 asset, and dragging or adding the component to the prefab's root GameObject (called Player).
 Reimport your tilemap to make Unity apply the changes to your Player prefab.
 
-Tile widths in KITTY are always exactly one Unity unit wide, so moving one unit in any direction
-corresponds exactly to moving one tile in that direction. Because we're always adding integers, the
-character position doesn't suffer from floating point inaccuracies.
-
 .. figure:: images/tutorial-grid-movement.gif
+	:align: center
+
+	Tile widths in KITTY are always exactly one Unity unit wide, so moving one unit in any direction
+	corresponds exactly to moving one tile in that direction. Because we're always adding integers,
+	the character position doesn't suffer from floating point inaccuracies.
 
 If you go into Play Mode, the character moves when you give it directional input, and it also stays
 exactly on the tile positions – but it's way too fast, potentially moving one tile per frame!
@@ -272,6 +288,8 @@ We'll be using an ``IEnumerator`` to call the method as a coroutine, so you need
 ``using System.Collections`` to the top of the file, as well.
 
 .. code-block:: c#
+	:caption: GridController.cs
+	:emphasize-lines: 2,5-19
 
 	using UnityEngine;
 	using System.Collections;
@@ -298,6 +316,8 @@ We'll be using an ``IEnumerator`` to call the method as a coroutine, so you need
 We need to update the ``Update`` method to call our new ``Walk`` method as a coroutine, as well:
 
 .. code-block:: c#
+	:caption: GridController.cs
+	:emphasize-lines: 3,5
 
 	// …
 	if (input.x != 0f) {
@@ -311,6 +331,7 @@ Calling ``Walk`` as a coroutine makes it able to stop for a bit and continue on 
 of running all the code immediately.
 
 .. figure:: images/tutorial-continuous-movement.gif
+	:align: center
 
 This is very useful to us, since we want to move a little bit, wait for the next frame, and then
 move a little bit more – until we reach the target tile.
@@ -338,6 +359,7 @@ Open one of your tilesets in Tiled, switch to Tile Collision Editor mode in the 
 start drawing full-tile collision shapes for all the tiles that should be collidable.
 
 .. figure:: images/tutorial-collision-shapes.gif
+	:align: center
 
 By defining the collisions in the tileset rather than the tilemap, the collision shapes are reused;
 you only need to define them once for each tile in the tileset, instead of having to make sure every
@@ -348,9 +370,10 @@ This is the reason KITTY imports tile collision shapes, but not object shapes, a
 Back in Unity, the tilemap now has a collider with all the collision shapes you defined.
 
 .. figure:: images/tutorial-tilemap-collider.png
+	:align: center
 
-It's quite difficult to see the collider, though; I lowered the tilemap opacity to make the collider
-more visible in the Scene View.
+	It's quite difficult to see the collider; I lowered the tilemap opacity to make the collider
+	more visible in the Scene View.
 
 Collision
 `````````
@@ -364,6 +387,8 @@ need physics, just collisions, we can instead add a simple collision check aroun
 method's movement loop in our ``GridController`` class:
 
 .. code-block:: c#
+	:caption: GridController.cs
+	:emphasize-lines: 2-8,15
 
 	// …
 	// BoxCast from the character's center, in the desired direction, to check for collisions.
@@ -386,9 +411,10 @@ This code addition simply makes sure we only run the movement loop if the player
 with anything at the target position.
 
 .. figure:: images/tutorial-collision.gif
+	:align: center
 
-If you enter Play Mode now, the player character is no longer be able to pass through the tiles you
-defined collision shapes for in your tilesets.
+	If you enter Play Mode now, the player character is no longer be able to pass through the tiles
+	you defined collision shapes for in your tilesets.
 
 
 Occlusion with Tile Masks
@@ -410,6 +436,7 @@ automatically generated ``SpriteRenderer``'s sprite.
 Create a script called `TileMask`:
 
 .. code-block:: c#
+	:caption: TileMask.cs
 
 	using UnityEngine;
 	using UnityEngine.Tilemaps;
@@ -437,6 +464,7 @@ to "Mask". This will make KITTY instantiate your new "Mask" prefab at every one 
 positions in your tilemap.
 
 .. figure:: images/tutorial-mask.gif
+	:align: center
 
 This approach of defining the occlusion directly in the tileset means you avoid repeating the
 occlusion definition, don't have to wrestle with multiple layers, and can't forget to make a tile in
@@ -471,10 +499,12 @@ the ``Text`` component, then disable the Canvas child so it doesn't start visibl
 Feel free to make it look fancy; I added a background panel and a custom font.
 
 .. figure:: images/tutorial-sign-prefab.png
+	:align: center
 
 Create a new ``Sign`` component, and add it to the root of the "Sign" prefab:
 
 .. code-block:: c#
+	:caption: Sign.cs
 
 	using System.Collections;
 	using KITTY;
@@ -511,6 +541,8 @@ We need to add a few lines of code to the ``GridController`` class as well. It n
 has a `Sign` component. Put this in the ``if (hit)``-block:
 
 .. code-block:: c#
+	:caption: GridController.cs
+	:emphasize-lines: 3-7
 
 	// …
 	if (hit) {
@@ -535,6 +567,7 @@ shape. You can add a default ``string`` Custom Property named "Text", as well; i
 used as sign text if you don't give a sign a specific text.
 
 .. figure:: images/tutorial-sign-properties.png
+	:align: center
 
 If you have several different sign tiles you want to use, just repeat the process for all of them.
 
@@ -542,6 +575,7 @@ Now, add as many Tile Object Signs as you want to your tilemap, and add or chang
 Custom Property individually.
 
 .. figure:: images/tutorial-unity-signs.gif
+	:align: center
 
 Switch back to Unity, enter Play Mode, and walk into a sign; with a few lines of code and a single
 Custom Property, you're now able to interact with the game world!
@@ -558,6 +592,8 @@ Instead of having separate classes and prefabs for Signs and stationary NPCs, we
 ``Sign`` component face the player if it has different tiles, or `frames`, for the four directions:
 
 .. code-block:: c#
+	:caption: Sign.cs
+	:emphasize-lines: 2-12
 
 	// …
 	public IEnumerator Interact(Transform actor) {
@@ -589,9 +625,10 @@ We can set a subsequence of frames for this ``Animator`` at any time by specifyi
 ``End`` properties. By setting both to the same value, the "animation" effectively turns into a
 single frame – the directional frame we want.
 
-The ``GridComponent`` needs to pass in its ``transform`` when calling ``Interact``, too:
+The ``GridController`` needs to pass in its ``transform`` when calling ``Interact``, too:
 
 .. code-block:: c#
+	:caption: GridController.cs
 
 	var interaction = hit.collider.GetComponentInParent<Sign>()?.Interact(transform);
 
@@ -600,11 +637,13 @@ frame for each of the four directions, and make sure the main tile has the Type 
 collision shape.
 
 .. figure:: images/tutorial-npc-animation.gif
+	:align: center
 
 Place a few NPC "Signs", add a ``string`` Custom Property named "Text" with whatever text you want,
 and they will turn to face the player when interacted with in Unity's Play Mode.
 
 .. figure:: images/tutorial-unity-npc.gif
+	:align: center
 
 She spins! By default, objects based on animated tiles will play out their full sequence of frames
 in a loop. If you want to have the "Sign" start facing one direction, just set the ``Start`` and
@@ -617,13 +656,15 @@ Remember to check whether the GameObject `has` an animator component, first. Tip
 Animating the Player
 --------------------
 
-Leaf from Pokémon FireRed/LeafGreen has three walking frames for each of the four
-directions, but her actual animation uses the middle frame twice:
+We'll use the same approach as the directional "sign" for animating the player; Setting the
+``Start`` and ``End`` parameters of an automatically created child ``Animator`` component to select
+animation sequences.
 
 .. figure:: images/tutorial-leaf.gif
+	:align: center
 
-We'll use the same approach as the directional "sign"; Setting the ``Start`` and ``End`` parameters
-of an automatically created child ``Animator`` component to select animation sequences.
+	Leaf from Pokémon FireRed/LeafGreen has three walking frames for each of the four
+	directions, but her actual animation uses the middle frame twice.
 
 Facing
 ``````
@@ -633,6 +674,8 @@ for each direction have a stride of four instead of one. In our ``GridController
 method:
 
 .. code-block:: c#
+	:caption: GridController.cs
+	:emphasize-lines: 4-10
 
 	// …
 	enabled = false;
@@ -650,6 +693,8 @@ Now that we have a frame offset for the direction, we can set a static frame fac
 if the player collides with something:
 
 .. code-block:: c#
+	:caption: GridController.cs
+	:emphasize-lines: 3-5
 
 	// …
 	if (hit) {
@@ -676,6 +721,8 @@ frames I want to play while she moves, wait for her to finish moving, and reset 
 static frame:
 
 .. code-block:: c#
+	:caption: GridController.cs
+	:emphasize-lines: 3-5,10-12
 
 	// …
 	} else {
@@ -696,10 +743,11 @@ Now we've defined both an idle animation and a walking animation, for all four d
 lines of code. Wonderful!
 
 .. figure:: images/tutorial-animation.gif
+	:align: center
 
-Leaf, like May, initially plays her entire animation sequence in a loop. If you want to have your
-character face a specific direction from the start instead, just both set the ``Start`` and ``End``
-parameters to the frame index you want in a ``Start`` method.
+	Leaf, like May, initially plays her entire animation sequence in a loop. If you want to have
+	your character face a specific direction from the start instead, just both set the ``Start`` and
+	``End`` parameters to the frame index you want in a ``Start`` method.
 
 
 Recap
@@ -712,18 +760,21 @@ Let's go through what we've made.
 Files
 `````
 
-The contents of my ``Assets/Maps/Tutorial`` folder looks like this:
+We don't really have that many files, despite having a small functioning game.
 
 .. figure:: images/tutorial-recap-files.png
-
-Yours should be roughly similar, though probably with a different number of tilesets and images.
+	:align: center
+	
+	The contents of my ``Assets/Maps/Tutorial`` folder looks like this. Yours should be roughly
+	similar, though probably with a different number of tilesets and images.
 
 Scene Hierarchy
 ```````````````
 
-The scene hierarchy just contains the tilemap prefab, and nothing else:
+The scene hierarchy just contains the tilemap prefab, and nothing else.
 
 .. figure:: images/tutorial-recap-scene.png
+	:align: center
 
 As you can see, there are no floating GameObjects to keep track of. I recommend making one fully
 self-contained scene per tilemap – that way, you can change mechanics as you see fit from one map
@@ -734,9 +785,8 @@ Code
 
 Finally, we ended up with just three scripts to describe all the behaviour in our game.
 
-``GridController.cs``:
-
 .. code-block:: c#
+	:caption: GridController.cs
 
 	using System.Collections;
 	using UnityEngine;
@@ -802,9 +852,8 @@ Finally, we ended up with just three scripts to describe all the behaviour in ou
 		}
 	}
 
-``TileMask.cs``:
-
 .. code-block:: c#
+	:caption: TileMask.cs
 
 	using UnityEngine;
 	using UnityEngine.Tilemaps;
@@ -820,9 +869,8 @@ Finally, we ended up with just three scripts to describe all the behaviour in ou
 		}
 	}
 
-``Sign.cs``:
-
 .. code-block:: c#
+	:caption: Sign.cs
 
 	using System.Collections;
 	using KITTY;
