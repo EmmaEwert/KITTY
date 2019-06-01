@@ -24,9 +24,10 @@ Documentation <https://docs.mapeditor.org/>`_ for that.
 TL;DR
 -----
 
-- Make tilemaps with typed and possibly animated objects in Tiled
-- Make prefabs with custom components and names that match Tiled objects' types
-- Import, change, and reimport tilemaps as needed
+- Make tilemaps in Tiled with typed and possibly animated objects
+- Make prefabs in Unity with names that match Tiled objects' types
+- Add built-in or custom components in Unity to your prefabs
+- Import, change, and reimport your tilemaps in Unity as needed
 
 
 Images, Tilesets and Tilemaps
@@ -551,7 +552,7 @@ Directional "Sign"
 
 Before we start animating the player, let's improve our ``Sign`` component a bit; depending on how
 you look at it, a stationary NPC that faces the player when speaking is really just a "Directional
-Sign".
+Sign". I went with four directional sprites of May from Pokémon FireRed/LeafGreen/FireRed.
 
 Instead of having separate classes and prefabs for Signs and stationary NPCs, we can just make our
 ``Sign`` component face the player if it has different tiles, or `frames`, for the four directions:
@@ -621,46 +622,276 @@ directions, but her actual animation uses the middle frame twice:
 
 .. figure:: images/tutorial-leaf.gif
 
+We'll use the same approach as the directional "sign"; Setting the ``Start`` and ``End`` parameters
+of an automatically created child ``Animator`` component to select animation sequences.
+
 Facing
 ``````
 
+Since Leaf has four walking frames per direction in her defined tile animation, the frame indices
+for each direction have a stride of four instead of one. In our ``GridController``'s ``Walk``
+method:
+
+.. code-block:: c#
+
+	// …
+	enabled = false;
+
+	// Animation frame sequence depends on directions.
+	var animator = GetComponentInChildren<Animator>();
+	var frame = 0;
+	if      (direction == Vector3.down)  { frame =  0; }
+	else if (direction == Vector3.left)  { frame =  4; }
+	else if (direction == Vector3.up)    { frame =  8; }
+	else if (direction == Vector3.right) { frame = 12; }
+	// …
+
+Now that we have a frame offset for the direction, we can set a static frame facing that direction
+if the player collides with something:
+
+.. code-block:: c#
+
+	// …
+	if (hit) {
+		// Set static frame facing the collider.
+		animator?.SetInteger("Start", frame + 1);
+		animator?.SetInteger("End", frame + 1);
+	// …
+
+I add ``1`` to the frame offset because Leaf's animation frames are left-foot, center, right-foot,
+center, and I want her static frame to be a center frame.
+
+It's important to set the animator parameters `before` a potential ``Interact`` coroutine is
+started; that way, the player will face a sign, an NPC, or any other interactable object while
+waiting for the ``Interact`` coroutine to finish.
+
 Animation
 `````````
+
+Animating your character's movement is done in the same way as setting a static frame, except the
+``Start`` and ``End`` parameters are different from each other.
+
+To animate Leaf with her four frames of animation, I simply define the subsequence of directional
+frames I want to play while she moves, wait for her to finish moving, and reset to a directional
+static frame:
+
+.. code-block:: c#
+
+	// …
+	} else {
+		// Set walking animation frame sequence.
+		animator?.SetInteger("Start", frame);
+		animator?.SetInteger("End", frame + 3);
+
+		// Move towards target, 1/16th tile per frame
+		// …
+
+		// Reset to idle.
+		animator?.SetInteger("Start", frame + 1);
+		animator?.SetInteger("End", frame + 1);
+	}
+	// …
+
+Now we've defined both an idle animation and a walking animation, for all four directions, in six
+lines of code. Wonderful!
+
+.. figure:: images/tutorial-animation.gif
+
+Leaf, like May, initially plays her entire animation sequence in a loop. If you want to have your
+character face a specific direction from the start instead, just both set the ``Start`` and ``End``
+parameters to the frame index you want in a ``Start`` method.
 
 
 Recap
 -----
 
+That concludes this tutorial in using Tiled and KITTY to make a small top-down game with Unity.
+
+Let's go through what we've made.
+
 Files
 `````
+
+The contents of my ``Assets/Maps/Tutorial`` folder looks like this:
+
+.. figure:: images/tutorial-recap-files.png
+
+Yours should be roughly similar, though probably with a different number of tilesets and images.
+
+Scene Hierarchy
+```````````````
+
+The scene hierarchy just contains the tilemap prefab, and nothing else:
+
 
 Code
 ````
 
+Finally, we ended up with just three scripts to describe all the behaviour in our game.
 
-Advanced: Opening doors
------------------------
+``GridController.cs``:
 
-Warp to Scene
-`````````````
+.. code-block:: c#
 
-Animation
-`````````
+	using System.Collections;
+	using UnityEngine;
 
-Taking Control of the Player Character
-``````````````````````````````````````
+	public class GridController : MonoBehaviour {
+		///<summary>Walk to tile in `direction`.</summary>
+		IEnumerator Walk(Vector3 direction) {
+			// Disable the Update method until we're done walking one tile.
+			enabled = false;
+
+			// Animation frame sequence depends on directions.
+			var animator = GetComponentInChildren<Animator>();
+			var frame = 0;
+			if      (direction == Vector3.down)  { frame =  0; }
+			else if (direction == Vector3.left)  { frame =  4; }
+			else if (direction == Vector3.up)    { frame =  8; }
+			else if (direction == Vector3.right) { frame = 12; }
+
+			// BoxCast from the character's center, in the desired direction, to check for collisions.
+			var origin = transform.position + new Vector3(0.5f, 0.5f);
+			var size = Vector2.one / 2f; // Half box size to avoid false positives.
+			var hit = Physics2D.BoxCast(origin, size, angle: 0f, direction, distance: 1f);
+			if (hit) {
+				// Set static frame facing the collider.
+				animator?.SetInteger("Start", frame + 1);
+				animator?.SetInteger("End", frame + 1);
+
+				// Interact with a Sign, if any.
+				var interaction = hit.collider.GetComponentInParent<Sign>()?.Interact(transform);
+				if (interaction != null) {
+					yield return StartCoroutine(interaction);
+				}
+			} else {
+				// Set walking animation frame sequence.
+				animator?.SetInteger("Start", frame);
+				animator?.SetInteger("End", frame + 3);
+
+				// Move towards target, 1/16th tile per frame
+				var target = transform.position + direction;
+				while (transform.position != target) {
+					transform.position = Vector3.MoveTowards(transform.position, target, 1f / 16f);
+					yield return null; // Wait for one frame before continuing.
+				}
+
+				// Reset to idle.
+				animator?.SetInteger("Start", frame + 1);
+				animator?.SetInteger("End", frame + 1);
+			}
+
+			// Enable the Update method after we're done walking one tile.
+			enabled = true;
+		}
+
+		void Update() {
+			var input = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
+
+			// Move one tile in an input direction, if any, preferring horizontal movement.
+			if (input.x != 0f) {
+				StartCoroutine(Walk(new Vector3(input.x, 0)));
+			} else if (input.y != 0f) {
+				StartCoroutine(Walk(new Vector3(0, input.y)));
+			}
+		}
+	}
+
+``TileMask.cs``:
+
+.. code-block:: c#
+
+	using UnityEngine;
+	using UnityEngine.Tilemaps;
+
+	[RequireComponent(typeof(SpriteMask))]
+	public class TileMask : MonoBehaviour {
+		void Start() {
+			var tilemap = GetComponentInParent<Tilemap>();
+			var position = Vector3Int.FloorToInt(transform.localPosition);
+			var sprite = tilemap.GetSprite(position);
+			GetComponent<SpriteMask>().sprite = sprite;
+			transform.localPosition += (Vector3)(sprite.pivot / sprite.pixelsPerUnit);
+		}
+	}
+
+``Sign.cs``:
+
+.. code-block:: c#
+
+	using System.Collections;
+	using KITTY;
+	using UnityEngine;
+	using UnityEngine.UI;
+
+	public class Sign : MonoBehaviour {
+		public GameObject canvas;
+		[TiledProperty] public string text;
+
+		public IEnumerator Interact(Transform actor) {
+			// Display a specific direction frame to face the player.
+			var animator = GetComponentInChildren<Animator>();
+			var direction = actor.position - transform.position;
+			var frame = 0;
+			if      (direction == Vector3.down)  { frame = 0; }
+			else if (direction == Vector3.left)  { frame = 1; }
+			else if (direction == Vector3.up)    { frame = 2; }
+			else if (direction == Vector3.right) { frame = 3; }
+			animator?.SetInteger("Start", frame);
+			animator?.SetInteger("End", frame);
+
+			// Enable the text canvas, and wait for the player to press the "Fire1" button.
+			canvas.SetActive(true);
+			GetComponentInChildren<Text>().text = text;
+			while (!Input.GetButtonDown("Fire1")) {
+				yield return null;
+			}
+			canvas.SetActive(false);
+		}
+	}
 
 
 Going Forward with KITTY
 ------------------------
 
+KITTY can do much more than just top-down orthogonal grid-based games.
+
+With what you've learned in this tutorial, you can go on to make platformers with complex collision
+shapes, turn-based strategy games with building mechanics, 3D tile-based first person games, or even
+improve upon KITTY itself.
+
+Good luck!
+
 This Tutorial
 `````````````
 
-Other Features
-``````````````
+You should be able to build on what you've made with this tutorial.
+
+For your next step, I have a few suggestions:
+
+- Make doors "warp" the player to different maps simply by loading entire scenes by their name
+- Expand the text boxes used for signs to support multiple pages, prompts, variables, and so on
+- Add NPCs that randomly walk around
 
 KITTY Examples
 ``````````````
 
-To be continued…
+We currently only have one published game made with KITTY.
+
+It's called `PiRATS <https://elyon.itch.io/pirats>`_, it got second place in `Mini Jam 28
+<https://itch.io/jam/mini-jam-28-pirates>`_, and it's made by `Fmlad <https://fmlad.itch.io/>`_ and
+`myself <https://elyon.itch.io/>`_.
+
+The game is short but kinda neat, we'd be happy if you would check it out~
+
+
+Thank you again for using KITTY!
+--------------------------------
+
+KITTY is just a hobby project I've been working on for a while.
+
+It means a lot to me that you got through this tutorial, so thank you.
+
+If you spot anything weird or wrong in this tutorial, or you find a bug or missing feature in KITTY,
+you're welcome to `contact me
+<mailto:emma.o.ewert@gmail.com>`_.
