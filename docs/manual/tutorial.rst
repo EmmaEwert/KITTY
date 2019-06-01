@@ -723,6 +723,11 @@ Scene Hierarchy
 
 The scene hierarchy just contains the tilemap prefab, and nothing else:
 
+.. figure:: images/tutorial-recap-scene.png
+
+As you can see, there are no floating GameObjects to keep track of. I recommend making one fully
+self-contained scene per tilemap – that way, you can change mechanics as you see fit from one map
+to the next.
 
 Code
 ````
