@@ -15,16 +15,20 @@ Each tileset tile defines what form the tile will take in a tilemap in Unity.
 
 For example, if the tile has an animation in a Tiled tileset, it'll be animated in Unity, too.
 
-Collision shapes defined in a Tiled tileset translate directly into the tilemap's collider, as well.
+Collision Shapes defined in a Tiled tileset translate directly into the tilemap's ``Collider``, as
+well.
 
 .. figure:: images/composite-collider.gif
+	:align: center
 
-Additionally, if the tile has a defined Type in a Tiled tileset, a prefab named after that Type will
-be instantiated automatically at the tile's position. This is described in more detail in the
-:ref:`prefabs` section.
+	Composite collider
 
-When importing any tilemap, a tile is exactly one Unity unit wide – if the tilemap tiles are square,
-the tiles are one Unity unit tall, as well.
+Additionally, if the tile has a defined **Type** in a Tiled tileset, a prefab named after that
+**Type** will be instantiated automatically at the tile's position. This is described in more detail
+in the :ref:`prefabs` section.
+
+.. Note:: When importing any tilemap, a tile is exactly one Unity unit wide – if the tilemap tiles are square,
+	the tiles are one Unity unit tall, as well.
 
 
 Files
@@ -37,11 +41,11 @@ image.
 Tiled tilemaps are defined in ``.tmx``-files, and reference one or multiple ``.tsx``-files for the
 tiles in the tilemap.
 
-For ease of import and use, it is suggested to create images and their related tilesets and tilemaps
-in the same folder, somewhere inside your project's Assets folder.
+For ease of import and use, I suggest creating images and their related tilesets and tilemaps in the
+same folder, somewhere inside your project's ``Assets`` folder.
 
-KITTY is entirely non-destructive, so keeping the source images, tilesets and tilemaps somewhere in
-the assets folder is not a risk.
+.. Note:: KITTY is entirely non-destructive, so keeping the source images, tilesets and tilemaps somewhere in
+	the ``Assets`` folder is not a risk.
 
 
 Automatic reloading
@@ -53,5 +57,5 @@ changed file.
 This means that when you edit images, configure tilesets or draw on tilemaps, Unity will apply the
 changes immediately.
 
-Note that for tilesets, Tiled recommends avoiding a change in width – ie. how many tiles are in a
-row. As such, you should add new tile rows to the bottom of the tileset image, if necessary.
+.. Note:: Tiled recommends avoiding a change in tileset width – ie. how many tiles are in a row. As
+such, you should add new tile rows to the bottom of the tileset image, if necessary.

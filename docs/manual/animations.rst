@@ -17,16 +17,17 @@ a character sprite sheet tileset might have animations for idle, run, and jump, 
 same animation in Tiled.
 
 The animation frames defined in tiled determine each frame's duration, as well. For more direct
-control over playback speed, the "Speed" parameter can be used as a playback speed factor. It
-defaults to `1.0f`.
+control over playback speed, the ``Speed`` parameter can be used as a playback speed factor. It
+defaults to ``1.0f``.
 
-By setting the "Start" and "End" parameters of an object's child Animator component, any subsequence
-can be played at any time.
+By setting the ``Start`` and ``End`` parameters of an object's child Animator component, any
+subsequence can be played at any time.
 
-For example, a character controller script with 4 idle frames followed by 6 walk frames might contain
-the following:
+For example, a ``CharacterController`` script with 4 idle frames followed by 6 walk frames might
+contain the following:
 
 .. code-block:: c#
+	:caption: CharacterController.cs
 
 	void Update() {
 		var animator = GetComponentInChildren<Animator>();
@@ -39,12 +40,13 @@ the following:
 		}
 	}
 
-This code tells the Animator to cycle through frames 4, 5, 6, 7, 8 and 9 when walking. When not
-walking, frames 0, 1, 2 and 3 are cycled through instead.
+This code tells the ``Animator`` to cycle through frames 4 through 9 when walking. When not walking,
+frames 0 through 3 are cycled through instead.
 
-Frame indices start from 0.
+.. Note:: Frame indices start from 0.
 
 .. figure:: images/idle-walk-animation.gif
+	:align: center
 
-*In the NES game DuckTales 2, Scrooge McDuck has 4 idle frames (3 unique) and 6 walk frames
-(5 unique)*
+	In the NES game DuckTales 2, Scrooge McDuck has 4 idle frames (3 unique) and 6 walk frames
+	(5 unique)

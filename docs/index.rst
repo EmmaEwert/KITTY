@@ -5,7 +5,7 @@ KITTY Imports Tiled Tilemaps Yay!
 
 .. figure:: images/cat.png
 
-This is a Tiled importer for Unity.
+This is a `Tiled <https://www.mapeditor.org/>`_ importer for `Unity <https://unity3d.com/>`_.
 
 KITTY differentiates itself from other Tiled importers through seamless basic integration, automatic
 object-to-prefab instantiation, and friction-free translation from Tiled custom properties to C#
