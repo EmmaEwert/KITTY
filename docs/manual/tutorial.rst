@@ -269,15 +269,15 @@ following contents:
 
 			// Move one tile in an input direction, if any, preferring horizontal movement.
 			if (input.x != 0f) {
-				transform.position += new Vector3(input.x, 0);
+				transform.position += new Vector3(input.x, 0).normalized;
 			} else if (input.y != 0f) {
-				transform.position += new Vector3(0, input.y);
+				transform.position += new Vector3(0, input.y).normalized;
 			}
 		}
 	}
 
-.. Note:: I'm using ``Input.GetAxisRaw`` to get the raw input data – either ``-1``, ``0``, or ``1``
-	for each axis.
+.. Note:: I'm using ``Input.GetAxisRaw`` to get the raw input data between ``-1`` and ``1``, and
+	normalizing it to get a direction vector.
 
 Now just add this new ``GridController`` component to your :guilabel:`Player` prefab by
 double-clicking the prefab asset, and dragging or adding the component to the prefab's root
@@ -335,8 +335,8 @@ We'll be using an ``IEnumerator`` to call the method as a coroutine, so you need
 	// …
 	}
 
-.. Note:: Moving by 1/16th unit won't introduce floating point inaccuracies either, because it's
-	a negative power of two.
+.. Note:: Moving by 1/16th unit won't introduce floating point inaccuracies, because it's a negative
+	power of two.
 
 We need to update the ``Update`` method to call our new ``Walk`` method as a coroutine, as well:
 
@@ -346,14 +346,14 @@ We need to update the ``Update`` method to call our new ``Walk`` method as a cor
 
 	// …
 	if (input.x != 0f) {
-		StartCoroutine(Walk(new Vector3(input.x, 0)));
+		StartCoroutine(Walk(new Vector3(input.x, 0).normalized));
 	} else if (input.y != 0f) {
-		StartCoroutine(Walk(new Vector3(0, input.y)));
+		StartCoroutine(Walk(new Vector3(0, input.y).normalized));
 	}
 	// …
 
-Calling ``Walk`` as a coroutine makes it able to stop for a bit and continue on next frame, instead
-of running all the code immediately.
+Calling ``Walk`` as a coroutine makes it able to stop for a bit and continue on the next frame,
+instead of running all the code immediately.
 
 .. figure:: images/tutorial-continuous-movement.gif
 	:align: center
@@ -443,8 +443,8 @@ collide with anything at the target position.
 
 	Collisions limit :guilabel:`Player` movement
 
-If you enter **Play Mode** now, the :guilabel:`Player` character is no longer be able to pass
-through the tiles you defined Collision Shapes for in your tilesets.
+If you enter **Play Mode** now, the :guilabel:`Player` character is no longer able to pass through
+the tiles you defined Collision Shapes for in your tilesets.
 
 
 Occlusion with Tile Masks
@@ -462,7 +462,7 @@ I find non-semantic layers like that tedious, repetitious, and error-prone, thou
 
 Let's define occluding tiles directly in the tileset, instead; we'll use a prefab with a
 ``SpriteMask`` component, and a small script that synchronises the ``SpriteMask``'s ``Sprite`` with
-the automatically generated ``SpriteRenderer``'s ``Sprite``.
+the tile's ``Sprite``.
 
 Create a script called ``TileMask``:
 
@@ -483,8 +483,8 @@ Create a script called ``TileMask``:
 		}
 	}
 
-Since the ``Sprite``'s pivot will be read as centered, the ``Transform``'s ``localPosition`` is moved
-to the center of the ``Sprite`` to align it with the source tile.
+Since the ``Sprite``'s pivot will be read as centered, the ``Transform``'s ``localPosition`` is
+aligned to the center of the tile.
 
 Now create a new prefab called :guilabel:`Mask`, and add your new ``TileMask`` component to it. A
 ``SpriteMask`` component will automatically be added as well, because of the ``RequireComponent``
@@ -903,9 +903,9 @@ Finally, we ended up with just three scripts to describe all the behaviour in ou
 
 			// Move one tile in an input direction, if any, preferring horizontal movement.
 			if (input.x != 0f) {
-				StartCoroutine(Walk(new Vector3(input.x, 0)));
+				StartCoroutine(Walk(new Vector3(input.x, 0).normalized));
 			} else if (input.y != 0f) {
-				StartCoroutine(Walk(new Vector3(0, input.y)));
+				StartCoroutine(Walk(new Vector3(0, input.y).normalized));
 			}
 		}
 	}
@@ -980,8 +980,8 @@ You should be able to build on what you've made with this tutorial.
 
 For your next step, I have a few suggestions:
 
-- Make :guilabel:`Door`\ s "warp" the :guilabel:`Player` to different maps simply by loading entire
-  scenes by their name
+- Make :guilabel:`Door`\ s "warp" the :guilabel:`Player` to different maps by loading entire scenes
+  by their name
 - Expand the text boxes used for :guilabel:`Sign`\ s to support multiple pages, prompts, variables,
   and so on
 - Add :guilabel:`NPC`\ s that walk around randomly
