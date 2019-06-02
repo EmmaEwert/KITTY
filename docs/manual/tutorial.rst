@@ -981,9 +981,9 @@ You should be able to build on what you've made with this tutorial.
 For your next step, I have a few suggestions:
 
 - Make :guilabel:`Door`\ s "warp" the :guilabel:`Player` to different maps simply by loading entire
-	scenes by their name
+  scenes by their name
 - Expand the text boxes used for :guilabel:`Sign`\ s to support multiple pages, prompts, variables,
-	and so on
+  and so on
 - Add :guilabel:`NPC`\ s that walk around randomly
 
 KITTY Examples
