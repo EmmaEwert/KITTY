@@ -178,8 +178,8 @@ component as well. You could even go so far as to add collision shapes to your c
 which would generate a ``PolygonCollider2D`` for each shape, but you won't need to do that for your
 character in this tutorial.
 
-The ability to control how Tiled objects are translated to ``GameObject``s is the primary feature of
-KITTY, however!
+The ability to control how Tiled objects are translated to ``GameObject``\ s is the primary feature
+of KITTY, however!
 
 Let's have the ``Camera`` component on the :guilabel:`Player` ``GameObject`` instead of at the root
 of the scene.
@@ -191,7 +191,7 @@ Add an empty ``GameObject`` to the scene; this will become our :guilabel:`Player
 from the scene **Hierarchy** to the **Project** view to save it as a prefab asset – anywhere in the
 ``Assets`` folder is fine, but let's drag it into ``Assets/Maps/Tutorial`` for now. It's important
 to name it :guilabel:`Player` or something similar, because KITTY uses prefab names to translate
-from Tiled objects to ``GameObject``s.
+from Tiled objects to ``GameObject``\ s.
 
 Now that you have your empty :guilabel:`Player` prefab in your ``Assets`` folder, go ahead and
 delete the :guilabel:`Player` instance from the scene, then double click the prefab to enter
@@ -245,7 +245,7 @@ Whenever a tile or object in Tiled has the **Type** :guilabel:`Player`, KITTY lo
 :guilabel:`Player` prefab in its place. This holds true for any typed Tiled object/Unity prefab
 combination with matching names.
 
-To define behaviours for objects, you simply add the components and child ``GameObject``s you need
+To define behaviours for objects, you simply add the components and child ``GameObject``\ s you need
 to the prefab that matches the object **Type** you want to define behaviours for.
 
 Grid Movement
@@ -279,7 +279,7 @@ following contents:
 .. Note:: I'm using ``Input.GetAxisRaw`` to get the raw input data – either ``-1``, ``0``, or ``1``
 	for each axis.
 
-Now just add this new ``GridController`` component to your guilabel:`Player` prefab by
+Now just add this new ``GridController`` component to your :guilabel:`Player` prefab by
 double-clicking the prefab asset, and dragging or adding the component to the prefab's root
 ``GameObject`` (called :guilabel:`Player`). Reimport your tilemap to make Unity apply the changes to
 your :guilabel:`Player` prefab.
@@ -371,7 +371,7 @@ Colliders
 `````````
 
 KITTY natively understands Collision Shapes defined in Tiled tilesets, and turns them into
-Sprite Physics Shapes – sprite/tile ``Collider``s. The entire tilemap has a ``CompositeCollider``
+Sprite Physics Shapes – sprite/tile ``Collider``\ s. The entire tilemap has a ``CompositeCollider``
 component that composes all the individual tile layer colliders into one, for performance reasons.
 
 This also means you can't query `what` tile an object collided with, as Unity sees them all as the
@@ -406,10 +406,10 @@ Collision
 Your entire tilemap automatically got a full-map ``Collider`` in Unity by just defining a few tile
 Collision Shapes in your Tiled tileset. Neat.
 
-The ``Collider`` doesn't stop the :guilabel:`Player` yet, though. One way of making ``GameObject``s
-interact with ``Collider``s in Unity is to add a ``Collider2D`` and a ``Rigidbody2D`` component, but
-since we don't need physics, just collisions, we can instead add a simple collision check around the
-``Walk`` method's movement loop in our ``GridController`` class:
+The ``Collider`` doesn't stop the :guilabel:`Player` yet, though. One way of making
+``GameObject``\ s interact with ``Collider``\ s in Unity is to add a ``Collider2D`` and a
+``Rigidbody2D`` component, but since we don't need physics, just collisions, we can instead add a
+simple collision check around the ``Walk`` method's movement loop in our ``GridController`` class.
 
 .. code-block:: c#
 	:caption: GridController.cs
@@ -593,7 +593,7 @@ method will now wait for the ``Sign``'s ``Interact`` method to complete before e
 ``GridController``'s ``Update`` method again with ``enabled = true;``
 
 We fetch the ``Sign`` component through ``collider.GetComponentInParent<Sign>()`` because KITTY
-automatically adds one or more child ``Collider``s – based on a tile's Collision Shapes – to
+automatically adds one or more child ``Collider``\ s – based on a tile's Collision Shapes – to
 instantiated prefabs.
 
 Back to Tiled; we need to make sure our sign tile has the **Type** :guilabel:`Sign`, and has a
@@ -627,7 +627,7 @@ depending on how you look at it, a stationary NPC that faces the :guilabel:`Play
 really just a `Directional "Sign"`. For my NPC, I went with four directional sprites of `May` from
 `Pokémon FireRed/LeafGreen`.
 
-Instead of having separate classes and prefabs for :guilabel:`Sign`s and stationary NPCs, we can
+Instead of having separate classes and prefabs for :guilabel:`Sign`\ s and stationary NPCs, we can
 just make our ``Sign`` component face the :guilabel:`Player` if it has different frames for the four
 directions.
 
@@ -653,7 +653,7 @@ directions.
 	}
 	// …
 
-To determine the direction the guilabel:`"Sign"` should face, we need to know what ``Transform`` is
+To determine the direction the :guilabel:`"Sign"` should face, we need to know what ``Transform`` is
 interacting with it; so, a ``Transform`` parameter has been added to the ``Interact`` method.
 
 Depending on the direction, we select one of the four directional frames for our NPC
@@ -682,7 +682,7 @@ The only thing you need to do in Tiled is to define a short animation for your N
 
 	Four animation frames; one for each direction
 
-Place a few NPC :guilabel:`"Sign"`s, add a ``string`` Custom Property named **Text** with whatever
+Place a few NPC :guilabel:`"Sign"`\ s, add a ``string`` Custom Property named **Text** with whatever
 text you want, and they will turn to face the :guilabel:`Player` when interacted with in Unity's
 **Play Mode**.
 
@@ -831,7 +831,7 @@ The scene **Hierarchy** just contains the tilemap prefab, and nothing else.
 
 	Final scene **Hierarchy**
 
-As you can see, there are no floating ``GameObject``s to keep track of. I recommend making one fully
+As you can see, there are no floating ``GameObject``\ s to keep track of. I recommend making one fully
 self-contained scene per tilemap – that way, you can change mechanics as you see fit from one map
 to the next.
 
