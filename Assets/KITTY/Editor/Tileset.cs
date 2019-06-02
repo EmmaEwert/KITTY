@@ -55,7 +55,7 @@ namespace KITTY {
 					var tileFrames = new List<KITTY.Tile.Frame>();
 					for (var i = 0; i < sprites.Length; ++i) {
 						sprites[i] = Sprite.Create(
-							texture,
+							frames[i].texture,
 							frames[i].rect,
 							pivot,
 							pixelsPerUnit,
@@ -101,6 +101,7 @@ namespace KITTY {
 			///</summary>
 			[Serializable]
 			public struct Frame {
+				public Texture2D texture;
 				public Rect rect;
 				public int duration;
 			}

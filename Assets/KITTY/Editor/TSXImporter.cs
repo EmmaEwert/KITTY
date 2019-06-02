@@ -83,8 +83,12 @@ namespace KITTY {
 					ParseObjects(tiles[i].objects, tileset.tiles[i].rect.height);
 				tileset.tiles[i].frames = new Tileset.Tile.Frame[tiles[i].frames?.Length ?? 0];
 				for (var j = 0; j < tileset.tiles[i].frames.Length; ++j) {
-					// TODO: Support image collection tileset animated tiles
-					tileset.tiles[i].frames[j] = new Tileset.Tile.Frame {
+					Rect rect;
+					if (texture == null) {
+						// Image collection tileset animated tiles
+						tileTexture = tiles[tiles[i].frames[j].tileid].texture;
+						rect = new Rect(0, 0, tileTexture.width, tileTexture.height);
+					} else {
 						rect = new Rect(
 							(tsx.tilewidth + tsx.spacing) * (tiles[i].frames[j].tileid % columns)
 								+ tsx.margin,
@@ -94,7 +98,11 @@ namespace KITTY {
 								+ tsx.spacing,
 							tsx.tilewidth,
 							tsx.tileheight
-						),
+						);
+					}
+					tileset.tiles[i].frames[j] = new Tileset.Tile.Frame {
+						texture = tileTexture,
+						rect = rect,
 						duration = tiles[i].frames[j].duration,
 					};
 				}
