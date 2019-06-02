@@ -1,9 +1,12 @@
 .. _index:
 
-KITTY Imports Tiled Tilemaps Yay!
-=================================
+KITTY Imports Tiled Tilemaps, Yay!
+==================================
 
 .. figure:: images/cat.png
+	:align: center
+
+	KITTY!
 
 This is a `Tiled <https://www.mapeditor.org/>`_ importer for `Unity <https://unity3d.com/>`_.
 
