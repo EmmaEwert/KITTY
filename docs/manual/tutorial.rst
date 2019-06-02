@@ -335,6 +335,9 @@ We'll be using an ``IEnumerator`` to call the method as a coroutine, so you need
 	// …
 	}
 
+.. Note:: Moving by 1/16th unit won't introduce floating point inaccuracies either, because it's
+	a negative power of two.
+
 We need to update the ``Update`` method to call our new ``Walk`` method as a coroutine, as well:
 
 .. code-block:: c#
@@ -797,7 +800,7 @@ lines of code. Wonderful!
 	Walking animation plays when the :guilabel:`Player` moves
 
 .. Note:: Leaf, like May, initially plays her entire animation sequence in a loop. If you want to
-	have your character face a specific direction from the start instead, just both set the
+	have your character face a specific direction from the start instead, just set both the
 	``Start`` and ``End`` parameters to the frame index you want in a ``Start`` method.
 
 
@@ -977,11 +980,11 @@ You should be able to build on what you've made with this tutorial.
 
 For your next step, I have a few suggestions:
 
-- Make :guilabel:`Door`s "warp" the :guilabel:`Player` to different maps simply by loading entire
+- Make :guilabel:`Door`\ s "warp" the :guilabel:`Player` to different maps simply by loading entire
 scenes by their name
-- Expand the text boxes used for :guilabel:`Sign`s to support multiple pages, prompts, variables,
+- Expand the text boxes used for :guilabel:`Sign`\ s to support multiple pages, prompts, variables,
 and so on
-- Add :guilabel:`NPC`s that walk around randomly
+- Add :guilabel:`NPC`\ s that walk around randomly
 
 KITTY Examples
 ``````````````
