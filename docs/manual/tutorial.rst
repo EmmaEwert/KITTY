@@ -116,7 +116,7 @@ Like the tileset, you want to save your tilemap in ``Assets/Maps/Tutorial``.
 Initial Unity Import
 --------------------
 
-Go ahead and drop the entire KITTY folder into the root of your Assets folder.
+Go ahead and drop the entire KITTY Unity Package into the root of your Assets folder.
 
 If you saved your tilesets and tilemaps next to your tileset images, the folder contents should now
 look a bit like this:
