@@ -1,12 +1,12 @@
 # KITTY Imports Tiled Tilemaps Yay
 
-Yet another [Tiled] importer for Unity.
+This is a [Tiled] importer for Unity.
 
 Documentation is available on [Read the Docs](https://kitty-unity.readthedocs.io/).
 
-KITTY differentiates itself through seamless basic integration, automatic object-to-prefab
-instantiation, and friction-free translation from Tiled custom properties to C# fields, properties
-and even methods.
+KITTY differentiates itself from other Tiled importers through seamless basic integration, automatic
+object-to-prefab instantiation, and friction-free translation from Tiled custom properties to C#
+fields.
 
 KITTY imports every graphic, object and setting you've defined in your Tiled tilemaps into Unity.
 
@@ -22,12 +22,12 @@ KITTY supports importing Tiled's `.tmx` and `.tsx` file formats natively in Unit
 
 The importers automatically reimport when you change a tilemap or tileset outside of Unity.
 
-Advanced Tiled features like collision shapes, per-frame animation framerate and tile objects
+Advanced Tiled features like Collision Shapes, per-frame animation framerate and tile objects
 *just work*.
 
 ## Automatic object-to-prefab instantiation
 
-KITTY aggressively instantiates prefabs from Tiled objects based on the Type property in Tiled.
+KITTY aggressively instantiates prefabs from Tiled objects based on the **Type** property in Tiled.
 
 The suggested workflow is to make a prefab (or prefab variant) for each generic object or tile
 object type, attach a bunch of components, and let the custom properties differentiate the specific
@@ -38,7 +38,7 @@ Tiled objects without losing your work.
 
 ## Friction-free translation from Tiled custom properties
 
-KITTY takes care of full Tiled custom properties integration in your game.
+KITTY takes care of full Tiled Custom Property integration in your game.
 
 The preferred approach to making your game aware of custom properties is to decorate relevant
 fields with the `[TiledProperty]` attribute – this automatically assigns the value defined in Tiled
