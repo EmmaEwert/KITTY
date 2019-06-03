@@ -147,6 +147,9 @@ Character and object spritesheets don't need to have the same tile size as the t
 not part of the grid. `Leaf`'s spritesheet, for example, uses 16×32 pixel sprites for each animation
 frame.
 
+.. Note:: You can make Tiled snap objects and other things to the tile grid by toggling it in **View
+	-> Snapping -> Snap to Grid**.
+
 We can insert sprites of any size anywhere in the map as objects by adding an Object Layer. I called
 my layer :guilabel:`Characters`, added a Tile Object of `Leaf` from the character spritesheet, and
 set the object's name to :guilabel:`Leaf`. You don't have to give your objects names, but since they
@@ -293,8 +296,12 @@ Tile widths in KITTY are always exactly one Unity unit wide, so moving one unit 
 corresponds exactly to moving one tile in that direction. Because we're always adding integers,
 the character position doesn't suffer from floating point inaccuracies.
 
-If you go into **Play Mode**, the character moves when you give it directional input, and it also
-stays exactly on the tile positions – but it's way too fast, potentially moving one tile per frame!
+.. Note:: When you change a prefab, you need to reimport any tilemaps or tilesets that use that
+	prefab.
+
+If you reimport your tilemap and go into **Play Mode**, the character moves when you give it
+directional input, and it also stays exactly on the tile positions – but it's way too fast,
+potentially moving one tile per frame!
 
 Continuous Movement
 ```````````````````
@@ -537,7 +544,7 @@ Feel free to make it look fancy; I added a background panel and a custom font.
 
 	My :guilabel:`Sign` prefab
 
-Create a new ``Sign`` component, and add it to the root of the :guilabel:`Sign` prefab:
+Create a new ``Sign`` C# script, and add this component to the root of the :guilabel:`Sign` prefab:
 
 .. code-block:: c#
 	:caption: Sign.cs
@@ -570,8 +577,9 @@ The ``[TiledProperty]`` attribute lets us assign the value of any Custom Propert
 ``public string text`` property. `Nice`.
 
 We're returning an ``IEnumerator`` again, because we want the ``GridController`` to wait for the
-"Fire1" button to be pressed before enabling its ``Update`` method again. The default "Fire1"
-buttons are Ctrl, left mouse button, and joypad button 1.
+"Fire1" button to be pressed before enabling its ``Update`` method again.
+
+.. Note:: The default "Fire1" buttons are Ctrl, left mouse button, and joypad button 1.
 
 We need to add a few lines of code to the ``GridController`` class as well. It needs to wait for the
 ``Interact`` coroutine to finish when there `is` a BoxCast hit, `and` the collider that was hit also
@@ -599,9 +607,10 @@ We fetch the ``Sign`` component through ``collider.GetComponentInParent<Sign>()`
 automatically adds one or more child ``Collider``\ s – based on a tile's Collision Shapes – to
 instantiated prefabs.
 
-Back to Tiled; we need to make sure our sign tile has the **Type** :guilabel:`Sign`, and has a
-full-tile Collision Shape. You can add a default ``string`` Custom Property named **Text**, as well;
-its value will be used as sign text if you don't give a sign a specific text.
+Back to Tiled; we need to make sure that in our tileset, our sign tile has the **Type**
+:guilabel:`Sign`, and has a full-tile Collision Shape. You can add a default ``string`` Custom
+Property named **Text**, as well; its value will be used as sign text if you don't give a sign a
+specific text.
 
 .. figure:: images/tutorial-sign-properties.png
 	:align: center
