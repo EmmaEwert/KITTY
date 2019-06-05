@@ -108,6 +108,9 @@
 			var tiles = new List<Tile> { null }; // Global IDs start from 1
 			foreach (var tsx in tilesets) {
 				var tileset = ParseTileset(context, tsx);
+				while (tiles.Count < tsx.firstgid) {
+					tiles.Add(null);
+				}
 				for (var i = 0; i < tileset.tiles.Length; ++i) {
 					var gid = tsx.firstgid + i;
 					var tile = tileset.tiles[i].Instantiate(tilewidth);
