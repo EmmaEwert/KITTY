@@ -430,45 +430,59 @@ namespace KITTY {
 				context.AddObjectToAsset($"State {name} {j}", states[j]);
 			}
 
+			// By default, the entire animation sequence plays continuously.
 			// Each frame state transitions to the next after its duration; the last frame state,
 			// defined by the value of the End property, loops back to the frame defined by the
-			// value of the Start property.
-			// By default, the entire animation sequence plays continuously.
+			// value of the Start property, through the restart state.
+			// If the Start property is ahead of the current state, or the End property is behind
+			// the current state, the Start state is immediately transitioned to, through the
+			// Restart state.
+			var restartState = stateMachine.AddState("Restart");
+			context.AddObjectToAsset($"State Restart {name}", restartState);
 			for (var j = 0; j < states.Length; ++j) {
-				// Forward; keep going to the next so long as the current state isn't the end state.
+				// Back; loop back to start if the current state is ahead of the end state.
+				var transition = states[j].AddTransition(restartState);
+				transition.hasExitTime = false;
+				transition.duration = 0f;
+				transition.interruptionSource = TransitionInterruptionSource.Destination;
+				transition.AddCondition(AnimatorConditionMode.Less, j, "End");
+				context.AddObjectToAsset($"Transition Back {name} {j}", transition);
+
+				// Forward; skip ahead to the start state if the current state is behind it.
+				transition = states[j].AddTransition(restartState);
+				transition.hasExitTime = false;
+				transition.duration = 0f;
+				transition.interruptionSource = TransitionInterruptionSource.Destination;
+				transition.AddCondition(AnimatorConditionMode.Greater, j, "Start");
+				context.AddObjectToAsset($"Transition Forward {name} {j}", transition);
+
+				// Replay; go back to the start state if the current state is the end state.
+				transition = states[j].AddTransition(restartState);
+				transition.hasExitTime = true;
+				transition.exitTime = 1f;
+				transition.duration = 0f;
+				transition.interruptionSource = TransitionInterruptionSource.Destination;
+				transition.AddCondition(AnimatorConditionMode.Equals, j, "End");
+				context.AddObjectToAsset($"Transition Restart {name} {j}", transition);
+
+				// Restart; connect the restart state back to all start states.
+				transition = restartState.AddTransition(states[j]);
+				transition.hasExitTime = false;
+				transition.duration = 0f;
+				transition.interruptionSource = TransitionInterruptionSource.Destination;
+				transition.AddCondition(AnimatorConditionMode.Equals, j, "Start");
+				context.AddObjectToAsset($"Transition Start {name} {j}", transition);
+
+				// Play; keep going to the next state until the end state is reached.
 				if (j < states.Length - 1) {
-					var destination = states[(j+1) % states.Length];
-					var transition = states[j].AddTransition(destination);
+					transition = states[j].AddTransition(states[j+1]);
 					transition.hasExitTime = true;
 					transition.exitTime = 1f;
 					transition.duration = 0f;
 					transition.interruptionSource = TransitionInterruptionSource.Destination;
 					transition.AddCondition(AnimatorConditionMode.Less, j + 1, "Start");
 					transition.AddCondition(AnimatorConditionMode.Greater, j, "End");
-					context.AddObjectToAsset($"Transition {name} {j}", transition);
-				}
-				for (var k = 0; k <= j; ++k) {
-					// Back; go back to the start state if we're at the end state.
-					var destination = states[k];
-					var transition = states[j].AddTransition(destination);
-					transition.hasExitTime = true;
-					transition.exitTime = 1f;
-					transition.duration = 0f;
-					transition.interruptionSource = TransitionInterruptionSource.Destination;
-					transition.AddCondition(AnimatorConditionMode.Equals, k, "Start");
-					transition.AddCondition(AnimatorConditionMode.Less, j + 1, "End");
-					context.AddObjectToAsset($"Transition Back {name} {j} {k}", transition);
-				}
-				for (var k = j + 1; k < states.Length; ++k) {
-					// Skip; skip ahead to the start state if we're behind it.
-					var destination = states[k];
-					var transition = states[j].AddTransition(destination);
-					transition.hasExitTime = false;
-					transition.duration = 0f;
-					transition.interruptionSource = TransitionInterruptionSource.Destination;
-					transition.AddCondition(AnimatorConditionMode.Equals, k, "Start");
-					transition.AddCondition(AnimatorConditionMode.Greater, j, "Start");
-					context.AddObjectToAsset($"Transition Skip {name} {j} {k}", transition);
+					context.AddObjectToAsset($"Transition Play {name} {j}", transition);
 				}
 			}
 
