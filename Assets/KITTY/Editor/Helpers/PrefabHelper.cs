@@ -35,9 +35,7 @@
                 select new { prefab, path }
             ).FirstOrDefault();
             cache.Add(name, asset?.prefab);
-			if (!string.IsNullOrEmpty(asset?.path)) {
-				context?.DependsOnSourceAsset(asset.path);
-			} else {
+			if (string.IsNullOrEmpty(asset?.path)) {
 				Debug.LogWarning($"No prefab named \"{name}\" could be found, skipping.");
 			}
             return asset?.prefab;
