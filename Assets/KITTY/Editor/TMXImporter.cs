@@ -2,6 +2,7 @@ namespace KITTY {
 	using System;
 	using System.Collections.Generic;
 	using System.IO;
+	using System.Reflection;
 	using System.Xml.Linq;
 	using UnityEditor;
 	using UnityEditor.Animations;
@@ -289,6 +290,11 @@ namespace KITTY {
 					}
 					var animator = renderer.gameObject.AddComponent<Animator>();
 					animator.runtimeAnimatorController = controller;
+
+					// Apply animations to all components.
+					foreach (var component in gameObject.GetComponentsInChildren<MonoBehaviour>()) {
+						ApplyAnimation(context, controller, tile.frames, component);
+					}
 				}
 
 				// A Collider child object is created for each collision shape defined in Tiled.
@@ -490,6 +496,70 @@ namespace KITTY {
 			context.AddObjectToAsset($"StateMachine {name}", controller.layers[0].stateMachine);
 
 			return controller;
+		}
+
+		///<summary>
+		///Apply animation state name hashes to a component's fields if they're decorated with
+		///TiledAnimationAttribute. States are automatically generated based on passed in frame
+		///indices.
+		///</summary>
+		static void ApplyAnimation(
+			AssetImportContext context,
+			AnimatorController controller,
+			Tile.Frame[] frames,
+			MonoBehaviour component
+		) {
+			foreach (var field in component.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
+				var attribute = field.GetCustomAttribute<TiledAnimationAttribute>();
+				if (attribute == null) { continue; }
+				var fieldName = ObjectNames.NicifyVariableName(field.Name);
+				var fieldType = field.FieldType.ToString();
+				if (fieldType != "System.Int32") {
+					Debug.LogWarning("Expected [TiledAnimation] to decorate int field, skipping.");
+					continue;
+				}
+				var binding = new EditorCurveBinding {
+					type = typeof(SpriteRenderer),
+					path = "",
+					propertyName = "m_Sprite",
+				};
+				// Each frame is defined as its own state, with individual durations and immediate
+				// transitions.
+				var clip = new AnimationClip();
+				clip.frameRate = 1000f;
+				clip.name = $"{fieldName}";
+				clip.hideFlags = HideFlags.HideInHierarchy;
+				var keyframes = new ObjectReferenceKeyframe[attribute.frames.Length + 1];
+				var time = 0f;
+				for (var i = 0; i < keyframes.Length - 1; ++i) {
+					var frame = frames[attribute.frames[i]];
+					keyframes[i] = new ObjectReferenceKeyframe {
+						time = time,
+						value = frame.sprite,
+					};
+					time += frame.duration / 1000f;
+				}
+				keyframes[keyframes.Length - 1] = new ObjectReferenceKeyframe {
+					time = time,
+					value = frames[attribute.frames[attribute.frames.Length - 1]].sprite
+				};
+				AnimationUtility.SetObjectReferenceCurve(clip, binding, keyframes);
+				var stateMachine = controller.layers[0].stateMachine;
+				var state = stateMachine.AddState(fieldName);
+				state.motion = clip;
+				state.speedParameter = "Speed";
+				state.speedParameterActive = true;
+				state.writeDefaultValues = false;
+				var transition = state.AddTransition(state);
+				transition.hasExitTime = true;
+				transition.exitTime = 1f;
+				transition.duration = 0f;
+				transition.interruptionSource = TransitionInterruptionSource.Destination;
+				context.AddObjectToAsset($"Clip {fieldName}", clip);
+				context.AddObjectToAsset($"State {fieldName}", state);
+				context.AddObjectToAsset($"Transition {fieldName}", transition);
+				field.SetValue(component, state.nameHash);
+			}
 		}
 	}
 }
