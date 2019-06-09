@@ -60,3 +60,14 @@ based on tileset tiles are called tile objects.
 
 Unless a tile object explicitly defines a specific property, that property's value, if any, is
 inherited from the source tile's property of the same name.
+
+
+Map and layer properties
+------------------------
+
+For maps and layers, KITTY will instantiate prefabs based on map and layer names, as described in
+:ref:`map_and_layer_prefabs`.
+
+Fields declared with the ``[TiledProperty]`` attribute in ``MonoBehaviour``\ s attached to those
+prefabs (or any children) will have their values set based on the map or layer's Custom Property
+with the same name as that field – case-insensitive, ignoring whitespace.
