@@ -48,13 +48,6 @@ Tile collision shape types are ignored
 Typed tile collision shapes should probably instantiate a prefab per shape. They currently don't.
 
 
-Map and layer properties are ignored
-------------------------------------
-
-The use cases for map and layer properties are as of yet undetermined. They could be used for
-defaults that can be overridden by each tile/object, or for something else entirely.
-
-
 Template objects don't work
 ---------------------------
 
