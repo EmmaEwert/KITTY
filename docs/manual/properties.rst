@@ -25,8 +25,8 @@ field with the ``[TiledProperty]`` attribute; for example like this:
 	}
 
 This will read the **Damage** and **Speed** custom properties (case-insensitive, ignoring
-whitespace) from the tile or object, and assign the values defined in Tiled to the respective fields
-in the C# script.
+whitespace) from the tile, object, layer, or map, and assign the values defined in Tiled to the
+respective fields in the C# script.
 
 The ``[TiledProperty]`` attribute can take an optional ``name`` parameter, in case the property
 defined in Tiled does not have (roughly) the same name as the corresponding field in C#:
