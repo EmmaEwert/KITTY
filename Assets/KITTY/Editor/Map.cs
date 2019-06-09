@@ -12,6 +12,7 @@
 	internal struct Map {
 		public Layer[] layers;
 		public Tile[] tiles;
+		public Property[] properties;
 
 		TMX tmx;
 
@@ -26,6 +27,7 @@
 		public Map(AssetImportContext context, TMX tmx) {
 			layers = ParseLayers(tmx.orientation, tmx.layers);
 			tiles = ParseTilesets(context, tmx.tilesets, tmx.tilewidth);
+			properties = tmx.properties;
 			this.tmx = tmx;
 		}
 
@@ -36,12 +38,13 @@
 			var layers = new Layer[tmxLayers.Length];
 			for (var i = 0; i < layers.Length; ++i) {
 				var tmxLayer = tmxLayers[i];
-				layers[i].name    = tmxLayer.name;
-				layers[i].opacity = tmxLayer.opacity;
-				layers[i].width   = tmxLayer.width;
-				layers[i].height  = tmxLayer.height;
-				layers[i].objects = tmxLayer.objects;
-				layers[i].chunks  = new Layer.Chunk[tmxLayer.data.chunks.Length];
+				layers[i].name       = tmxLayer.name;
+				layers[i].opacity    = tmxLayer.opacity;
+				layers[i].width      = tmxLayer.width;
+				layers[i].height     = tmxLayer.height;
+				layers[i].properties = tmxLayer.properties;
+				layers[i].objects    = tmxLayer.objects;
+				layers[i].chunks     = new Layer.Chunk[tmxLayer.data.chunks.Length];
 				for (var j = 0; j < layers[i].chunks.Length; ++j) {
 					var chunk = tmxLayer.data.chunks[j];
 					layers[i].chunks[j] = ParseChunk(
@@ -154,6 +157,7 @@
 			public float opacity;
 			public int width;
 			public int height;
+			public Property[] properties;
 			public Chunk[] chunks;
 			public TMX.Layer.Object[] objects;
 

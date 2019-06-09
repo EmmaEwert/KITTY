@@ -18,6 +18,9 @@ namespace KITTY {
 		public TSX[] tilesets;
 		public Layer[] layers;
 
+		// Properties
+		public Property[] properties;
+
 		public TMX(XElement element, string assetPath) {
 			// Attributes
 			orientation = (string)element.Attribute("orientation");
@@ -36,6 +39,15 @@ namespace KITTY {
 				.Where(e => e.Name == "layer" || e.Name == "objectgroup")
 				.Select(l => new Layer(l))
 				.ToArray();
+			properties = element
+				.Elements("properties")
+				?.Elements("property")
+				.Select(p => new Property {
+					name = (string)p.Attribute("name"),
+					type = (string)p.Attribute("type") ?? "string",
+					value = (string)p.Attribute("value") ?? p.Value,
+				})
+				.ToArray();
 		}
 
 		public struct Layer {
@@ -52,6 +64,8 @@ namespace KITTY {
 			// Object layer
 			public Object[] objects;
 
+			public Property[] properties;
+
 			public Layer(XElement element) {
 				id      = (int?  )element.Attribute("id") ?? 0;
 				name    = (string)element.Attribute("name");
@@ -65,6 +79,15 @@ namespace KITTY {
 				objects = element
 					.Elements("object")
 					.Select(o => new Object(o))
+					.ToArray();
+				properties = element
+					.Elements("properties")
+					?.Elements("property")
+					.Select(p => new Property {
+						name = (string)p.Attribute("name"),
+						type = (string)p.Attribute("type") ?? "string",
+						value = (string)p.Attribute("value") ?? p.Value,
+					})
 					.ToArray();
 			}
 

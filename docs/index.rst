@@ -75,6 +75,7 @@ parameter for specifying the Tiled property name.
    manual/getting_started
    manual/tilesets_and_tilemaps
    manual/prefabs
+   manual/map_and_layer_prefabs
    manual/properties
    manual/animations
    manual/tutorial

@@ -19,7 +19,7 @@
 		///based on the path prefix similarity to the source asset path.
 		///</summary>
 		// TODO: Heuristic for relevance in case of multiple results.
-        public static GameObject Load(string name, AssetImportContext context) {
+        public static GameObject Load(string name, AssetImportContext context, bool warn = true) {
             if (string.IsNullOrEmpty(name)) { return null; }
             if (cache.TryGetValue(name, out var cachedPrefab)) {
                 return cachedPrefab;
@@ -35,7 +35,7 @@
                 select new { prefab, path }
             ).FirstOrDefault();
             cache.Add(name, asset?.prefab);
-			if (string.IsNullOrEmpty(asset?.path)) {
+			if (warn && string.IsNullOrEmpty(asset?.path)) {
 				Debug.LogWarning($"No prefab named \"{name}\" could be found, skipping.");
 			}
             return asset?.prefab;

@@ -38,7 +38,20 @@ namespace KITTY {
 		///Create and configure main Grid GameObject.
 		///</summary>
 		static GameObject CreateGrid(AssetImportContext context, Map map) {
-			var gameObject = new GameObject(Path.GetFileNameWithoutExtension(context.assetPath));
+			var name = Path.GetFileNameWithoutExtension(context.assetPath);
+
+			// Instantiate a prefab named after the tilemap name, if any.
+			var prefab = PrefabHelper.Load(name, context, map.properties.Length > 0);
+			GameObject gameObject;
+			if (prefab) {
+				gameObject = PrefabUtility.InstantiatePrefab(prefab) as GameObject;
+				foreach (var component in gameObject.GetComponentsInChildren<MonoBehaviour>()) {
+					Property.Apply(map.properties, component);
+				}
+			} else {
+				gameObject = new GameObject(name);
+			}
+
 			var grid = gameObject.AddComponent<Grid>();
 			gameObject.isStatic = true;
 
@@ -48,6 +61,8 @@ namespace KITTY {
 				case "hexagonal":  grid.cellLayout = CellLayout.Hexagon;   break;
 				default: throw new NotImplementedException($"Orientation: {map.orientation}");
 			}
+
+			// Grid cells are always 1 unit wide; their height respects the aspect ratio.
 			grid.cellSize = new Vector3(1f, (float)map.tileheight / map.tilewidth, 1f);
 
 			gameObject.AddComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Static;
@@ -60,7 +75,7 @@ namespace KITTY {
 		}
 
 		///<summary>
-		///Create a GameObject for each layer.
+		///Instantiate a prefab or create a GameObject for each layer.
 		///</summary>
 		static GameObject[] CreateLayers(AssetImportContext context, Map map) {
 			var animators = new Dictionary<uint, AnimatorController>();
@@ -69,10 +84,22 @@ namespace KITTY {
 			// A layer can be either a tile layer (has chunks), or an object layer (no chunks).
 			for (var i = 0; i < layerObjects.Length; ++i) {
 				var layer = map.layers[i];
-				if (layer.chunks.Length > 0) {
-					layerObjects[i] = CreateTileLayer(map, layer, order: i);
+
+				// Instantiate a prefab named after the layer name, if any.
+				var prefab = PrefabHelper.Load(layer.name, context, layer.properties.Length > 0);
+				if (prefab) {
+					layerObjects[i] = PrefabUtility.InstantiatePrefab(prefab) as GameObject;
+					foreach (var component in layerObjects[i].GetComponentsInChildren<MonoBehaviour>()) {
+						Property.Apply(layer.properties, component);
+					}
 				} else {
-					layerObjects[i] = CreateObjectLayer(context, map, layer, order: i, animators);
+					layerObjects[i] = new GameObject(layer.name);
+				}
+
+				if (layer.chunks.Length > 0) {
+					CreateTileLayer(layerObjects[i], map, layer, order: i);
+				} else {
+					CreateObjectLayer(context, layerObjects[i], map, layer, order: i, animators);
 				}
 				layerObjects[i].isStatic = true;
 			}
@@ -83,8 +110,12 @@ namespace KITTY {
 		///<summary>
 		///Add and configure a Tilemap component for a layer.
 		///</summary>
-		static GameObject CreateTileLayer(Map map, Map.Layer layer, int order) {
-			var layerObject = new GameObject(layer.name);
+		static void CreateTileLayer(
+			GameObject layerObject,
+			Map map,
+			Map.Layer layer,
+			int order
+		) {
 			var tilemap = layerObject.AddComponent<UnityEngine.Tilemaps.Tilemap>();
 			var renderer = layerObject.AddComponent<TilemapRenderer>();
 			layerObject.AddComponent<TilemapCollider2D>().usedByComposite = true;
@@ -113,8 +144,6 @@ namespace KITTY {
 				FlipTiles(tilemap, layer, chunk);
 				CreateTileObjects(map, layer, chunk, layerObject);
 			}
-
-			return layerObject;
 		}
 
 		///<summary>
@@ -220,15 +249,14 @@ namespace KITTY {
 		///<summary>
 		///Create a GameObject for each Tiled object in layer.
 		///</summary>
-		static GameObject CreateObjectLayer(
+		static void CreateObjectLayer(
 			AssetImportContext context,
+			GameObject layerObject,
 			Map map,
 			Map.Layer layer,
 			int order,
 			Dictionary<uint, AnimatorController> animators
 		) {
-			var layerGameObject = new GameObject(layer.name);
-
 			foreach (var @object in layer.objects) {
 				var tile = map.tiles[(int)(@object.gid & 0x1fffffff)];
 				var sprite = tile?.sprite;
@@ -238,7 +266,7 @@ namespace KITTY {
 
 				// Since Tiled's up is Y-negative while Unity's is Y-positive, the Y position is
 				// effectively reversed.
-				gameObject.transform.parent = layerGameObject.transform;
+				gameObject.transform.parent = layerObject.transform;
 				gameObject.transform.localPosition = new Vector3(
 					@object.x / map.tilewidth,
 					-@object.y / map.tileheight + map.height
@@ -311,8 +339,6 @@ namespace KITTY {
 					}
 				}
 			}
-
-			return layerGameObject;
 		}
 
 		///<summary>
