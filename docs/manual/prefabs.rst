@@ -16,6 +16,8 @@ For tileset tiles with a defined **Type** property in Tiled, a prefab is instant
 instance of that tile's position in a tilemap, unmodified except for rotation based on the tile's
 flipping, if any.
 
+.. Note:: When you change a prefab instantiated from a tileset, you need to reimport that tileset.
+
 
 Object prefabs
 --------------
@@ -29,6 +31,8 @@ any.
 For example, a Tiled object with the **Name** :guilabel:`Mega Man` and the **Type**
 :guilabel:`Player` will instantiate a prefab named :guilabel:`Player`, and change the instance's
 name to :guilabel:`Mega Man`, followed by an object ID.
+
+.. Note:: When you change a prefab instantiated from an object, you need to reimport the tilemap.
 
 
 Tile object prefabs
