@@ -18,8 +18,8 @@ yourself.
 
 Components on and children of a custom map prefab stay on the tilemap ``GameObject`` too, of course.
 
-.. Tip:: You can use a custom map for multiple tilemaps by naming it something like :guilabel:`Map`,
-	and making named prefab variants of this :guilabel:`Map` prefab original.
+.. Tip:: You can use a custom map prefab for multiple tilemaps by naming it something like
+:guilabel:`Map`, and making named prefab variants of this :guilabel:`Map` prefab original.
 
 
 Layer components
