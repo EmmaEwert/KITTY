@@ -58,4 +58,4 @@ This means that when you edit images, configure tilesets or draw on tilemaps, Un
 changes immediately.
 
 .. Note:: Tiled recommends avoiding a change in tileset width – ie. how many tiles are in a row. As
-such, you should add new tile rows to the bottom of the tileset image, if necessary.
+	such, you should add new tile rows to the bottom of the tileset image, if necessary.
