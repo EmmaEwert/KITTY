@@ -27,10 +27,19 @@ namespace KITTY {
 				columns = tilecount;
 				rows = 1;
 			} else {
-				texture = LoadTexture(tsx.image.source, tsx.image.trans, context);
+				// Single-image tilesets merge margin and spacing, and add a 1-pixel clamped border.
+				texture = LoadTexture(
+					context,
+					tsx.image.source,
+					tsx.image.trans,
+					tsx.margin,
+					tsx.spacing,
+					tsx.tilewidth,
+					tsx.tileheight
+				);
 				// Column count might not exist, so just compute it instead.
-				columns = (texture.width - tsx.margin) / (tsx.tilewidth + tsx.spacing);
-				rows = (texture.height - tsx.margin) / (tsx.tileheight + tsx.spacing);
+				columns = texture.width / (tsx.tilewidth + 2);
+				rows = texture.height / (tsx.tileheight + 2);
 				// Tile count depends only on column and row count.
 				tilecount = columns * rows;
 			}
@@ -51,7 +60,7 @@ namespace KITTY {
 			foreach (var tile in tsx.tiles) {
 				tiles[tile.id] = (
 					PrefabHelper.Load(tile.type, context),
-					texture ?? LoadTexture(tile.image.source, tile.image.trans, context),
+					texture ?? LoadTexture(context, tile.image.source, tile.image.trans),
 					tile.objects,
 					tile.frames,
 					tile.properties
@@ -65,37 +74,47 @@ namespace KITTY {
 			tileset.tiles = new Tileset.Tile[tilecount];
 			var pivot = Vector2.one * 0.5f - new Vector2(tsx.tileoffset.x, tsx.tileoffset.y)
 				/ new Vector2(tsx.tilewidth, tsx.tileheight);
+			// Since the tileset image is recreated with a 1-pixel clamped border around each tile,
+			// we end up with a margin value of 1px and a spacing value of 2px
 			for (var i = 0; i < tileset.tiles.Length; ++i) {
 				var tileTexture = tiles[i].texture;
 				tileset.tiles[i].prefab = tiles[i].prefab;
 				tileset.tiles[i].texture = tileTexture;
 				tileset.tiles[i].pivot = pivot;
-				tileset.tiles[i].rect = new Rect(
-					texture ? (tsx.tilewidth + tsx.spacing) * (i % columns) + tsx.margin : 0,
-					texture
-						? (tsx.tileheight + tsx.spacing) * (rows - i / columns - 1) + texture.height
-							- rows * tsx.tileheight - rows * tsx.spacing - tsx.margin + tsx.spacing
-						: 0,
-					texture ? tsx.tilewidth : tileTexture?.width ?? 0,
-					texture ? tsx.tileheight : tileTexture?.height ?? 0
-				);
+				if (texture == null) {
+					// Image collection tileset rect is just the full tile texture
+					tileset.tiles[i].rect = new Rect(
+						0,
+						0,
+						tileTexture?.width ?? 0,
+						tileTexture?.height ?? 0
+					);
+				} else {
+					// Single-image tileset rect needs to respect the added 1-pixel clamped border
+					// around each tile, and read tiles from the top instead of the bottom
+					tileset.tiles[i].rect = new Rect(
+						(tsx.tilewidth  + 2) * ( i % columns    ) + 1,
+						(tsx.tileheight + 2) * (-i / columns - 1) + 1 + texture.height,
+						tsx.tilewidth,
+						tsx.tileheight
+					);
+				}
 				tileset.tiles[i].objects =
 					ParseObjects(tiles[i].objects, tileset.tiles[i].rect.height);
 				tileset.tiles[i].frames = new Tileset.Tile.Frame[tiles[i].frames?.Length ?? 0];
 				for (var j = 0; j < tileset.tiles[i].frames.Length; ++j) {
+					var frame = tiles[i].frames[j];
 					Rect rect;
 					if (texture == null) {
 						// Image collection tileset animated tiles
-						tileTexture = tiles[tiles[i].frames[j].tileid].texture;
+						tileTexture = tiles[frame.tileid].texture;
 						rect = new Rect(0, 0, tileTexture.width, tileTexture.height);
 					} else {
+						// Single-image tileset animated tiles
 						rect = new Rect(
-							(tsx.tilewidth + tsx.spacing) * (tiles[i].frames[j].tileid % columns)
-								+ tsx.margin,
-							(tsx.tileheight + tsx.spacing)
-								* (rows - tiles[i].frames[j].tileid / columns - 1) + texture.height
-								- rows * tsx.tileheight - rows * tsx.spacing - tsx.margin
-								+ tsx.spacing,
+							(tsx.tilewidth  + 2) * ( frame.tileid % columns    ) + 1,
+							(tsx.tileheight + 2) * (-frame.tileid / columns - 1) + 1
+								+ texture.height,
 							tsx.tilewidth,
 							tsx.tileheight
 						);
@@ -103,13 +122,16 @@ namespace KITTY {
 					tileset.tiles[i].frames[j] = new Tileset.Tile.Frame {
 						texture = tileTexture,
 						rect = rect,
-						duration = tiles[i].frames[j].duration,
+						duration = frame.duration,
 					};
 				}
 				tileset.tiles[i].properties = tiles[i].properties ?? new Property[0];
 			}
 
 			context.AddObjectToAsset($"Tileset {tileset.name}", tileset);
+			if (context.assetPath.EndsWith(".tsx")) {
+				context.SetMainObject(tileset);
+			}
 			return tileset;
 		}
 
@@ -158,7 +180,15 @@ namespace KITTY {
 		///<summary>
 		///Load texture asset based on filename, optionally making a color transparent
 		///</summary>
-		static Texture2D LoadTexture(string filename, string trans, AssetImportContext context) {
+		static Texture2D LoadTexture(
+			AssetImportContext context,
+			string filename,
+			string trans,
+			int margin = 0,
+			int spacing = 0,
+			int tilewidth = 0,
+			int tileheight = 0
+		) {
 			var imageAssetPath = Path.GetFullPath(
 				Path.GetDirectoryName(context.assetPath)
 				+ Path.DirectorySeparatorChar
@@ -172,37 +202,105 @@ namespace KITTY {
 				throw new FileNotFoundException($"could not load texture \"{imageAssetPath}\" ({filename}) of tileset \"{context.assetPath}\".");
 			}
 
-			if (trans != null) {
-				// If a transparent color is defined, we have to copy all the pixels and clear the
-				// pixels matching that color.
-				ColorUtility.TryParseHtmlString($"#{trans}".Substring(trans.Length - 6), out var transparent);
-				if (!texture.isReadable) {
-					// Instead of failing and requiring the user to flag a texture as readable, we
-					// can work around an unreadable texture by rendering it to a RenderTexture and
-					// reading pixels from that instead of the source texture.
-					var renderTexture = RenderTexture.GetTemporary(texture.width, texture.height, depthBuffer: 0, RenderTextureFormat.Default, RenderTextureReadWrite.Linear);
-					Graphics.Blit(texture, renderTexture);
-					var previousRenderTexture = RenderTexture.active;
-					RenderTexture.active = renderTexture;
-					texture = new Texture2D(texture.width, texture.height) { filterMode = texture.filterMode };
-					texture.ReadPixels(new Rect(0, 0, renderTexture.width, renderTexture.height), 0, 0);
-					texture.Apply();
-					RenderTexture.active = previousRenderTexture;
-					RenderTexture.ReleaseTemporary(renderTexture);
-				}
-				var transparentTexture = new Texture2D(
-					texture.width, texture.height, TextureFormat.ARGB32, mipChain: false
-				) {
+			// We only need a readable texture for single-image tilesets and/or a defined
+			// transparent color
+			if (!texture.isReadable && ((tilewidth > 0 && tileheight > 0) || trans != null)) {
+				// Instead of failing and requiring the user to flag a texture as readable, we
+				// can work around an unreadable texture by rendering it to a RenderTexture and
+				// reading pixels from that instead of the source texture.
+				var renderTexture = RenderTexture.GetTemporary(
+					texture.width,
+					texture.height,
+					depthBuffer: 0,
+					RenderTextureFormat.Default,
+					RenderTextureReadWrite.Linear
+				);
+				Graphics.Blit(texture, renderTexture);
+				var previousRenderTexture = RenderTexture.active;
+				RenderTexture.active = renderTexture;
+				texture = new Texture2D(texture.width, texture.height) {
 					filterMode = texture.filterMode
 				};
+				texture.ReadPixels(new Rect(0, 0, renderTexture.width, renderTexture.height), 0, 0);
+				texture.Apply();
+				RenderTexture.active = previousRenderTexture;
+				RenderTexture.ReleaseTemporary(renderTexture);
+			}
+
+			// If a transparent color is defined, we have to copy all the pixels and clear the
+			// pixels matching that color.
+			var transparent = Color.clear;
+			if (trans != null) {
+				ColorUtility.TryParseHtmlString(
+					$"#{trans}".Substring(trans.Length - 6),
+					out transparent
+				);
+			}
+
+			// Clear margin and spacing directly in the single-image tileset texture, and add a
+			// 1-pixel clamped border around each tile instead.
+			if (tilewidth > 0 && tileheight > 0) {
+				var columns = (texture.width - margin) / (tilewidth + spacing);
+				var rows = (texture.height - margin) / (tileheight + spacing);
+				var tilesetTexture = new Texture2D(
+					columns * tilewidth + columns * 2,
+					rows * tileheight + rows * 2
+				) { filterMode = texture.filterMode };
+				for (var y = 0; y < rows; ++y) {
+					var sourceY = y * (tileheight + spacing) + texture.height
+						- rows * (tileheight + spacing);
+					var destinationY = y * tileheight + y * 2 + 1;
+					for (var x = 0; x < columns; ++x) {
+						var sourceX = x * (tilewidth + spacing) + margin;
+						var destinationX = x * tilewidth + x * 2 + 1;
+						var pixels = texture.GetPixels(sourceX, sourceY, tilewidth, tileheight);
+						// Clear pixels matching the defined transparent color.
+						if (transparent != Color.clear) {
+							pixels = pixels
+								.Select(c => c == transparent ? Color.clear : c)
+								.ToArray();
+						}
+						// Add a 1-pixel clamped border around the tile.
+						for (var dy = -1; dy <= 1; ++dy)
+						for (var dx = -1; dx <= 1; ++dx) {
+							if (Mathf.Abs(dx) == Mathf.Abs(dy)) { continue; }
+							tilesetTexture.SetPixels(
+								destinationX + dx,
+								destinationY + dy,
+								tilewidth,
+								tileheight,
+								pixels
+							);
+						}
+						// Add the actual tile in the middle.
+						tilesetTexture.SetPixels(
+							destinationX,
+							destinationY,
+							tilewidth,
+							tileheight,
+							pixels
+						);
+					}
+				}
+				tilesetTexture.Apply();
+				texture = tilesetTexture;
+				texture.name = $"Texture {filename}";
+				context.AddObjectToAsset($"Texture {filename}", texture);
+			// Clear transparent color in image collection tilesets.
+			} else if (transparent != Color.clear) {
+				var transparentTexture = new Texture2D(
+					texture.width, texture.height, TextureFormat.ARGB32, mipChain: false
+				) { filterMode = texture.filterMode };
 				// Read all pixel colors, and clear those that match the defined transparent color.
 				var colors = texture.GetPixels();
 				colors = colors.Select(c => c == transparent ? Color.clear : c).ToArray();
 				transparentTexture.SetPixels(colors);
-				transparentTexture.name = $"Texture {filename}";
-				context.AddObjectToAsset($"Texture {filename}", transparentTexture);
+				transparentTexture.Apply();
 				texture = transparentTexture;
+				texture.name = $"Texture {filename}";
+				context.AddObjectToAsset($"Texture {filename}", texture);
 			}
+
 			context.DependsOnSourceAsset(imageAssetPath);
 			return texture;
 		}

@@ -38,6 +38,9 @@ A Tiled tileset is defined in a ``.tsx``-file. For regular, grid-based tilesets,
 exactly one associated image. For image collection tilesets, every tile has a separate associated
 image.
 
+.. Note:: KITTY automatically adds a 1-pixel border to each grid-based tileset tile before using it.
+	This keeps the tiles from bleeding into each other, even with weird camera angles or settings.
+
 Tiled tilemaps are defined in ``.tmx``-files, and reference one or multiple ``.tsx``-files for the
 tiles in the tilemap.
 
