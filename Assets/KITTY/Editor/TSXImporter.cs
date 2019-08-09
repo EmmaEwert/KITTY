@@ -1,4 +1,5 @@
 namespace KITTY {
+	using System.Collections.Generic;
 	using System.IO;
 	using System.Linq;
 	using System.Xml.Linq;
@@ -149,32 +150,32 @@ namespace KITTY {
 			if (tsxObjects == null) {
 				return null;
 			}
-			var objects = new Tileset.Tile.Object[tsxObjects.Length];
-			for (var j = 0; j < objects.Length; ++j) {
+			var objects = new List<Tileset.Tile.Object>();
+			for (var j = 0; j < tsxObjects.Length; ++j) {
 				var @object = tsxObjects[j];
 				// Rectangle shape.
 				if (@object.width > 0 && @object.height > 0) {
-					objects[j] = new Tileset.Tile.Object {
+					objects.Add(new Tileset.Tile.Object {
 						points = new [] {
 							new Vector2(@object.x, height - @object.y),
 							new Vector2(@object.x, height - @object.y - @object.height),
 							new Vector2(@object.x + @object.width, height - @object.y - @object.height),
 							new Vector2(@object.x + @object.width, height - @object.y)
 						}
-					};
+					});
 				// Polygon shape.
 				} else if (@object.points != null) {
 					var points = @object.points.Split(' ');
-					objects[j] = new Tileset.Tile.Object { points = new Vector2[points.Length] };
+					objects.Add(new Tileset.Tile.Object { points = new Vector2[points.Length] });
 					for (var k = 0; k < points.Length; ++k) {
 						var point = points[k].Split(',');
 						var x = float.Parse(point[0]);
 						var y = float.Parse(point[1]);
-						objects[j].points[k] = new Vector2(@object.x + x, height - @object.y - y);
+						objects.Last().points[k] = new Vector2(@object.x + x, height - @object.y - y);
 					}
 				}
 			}
-			return objects;
+			return objects.Count == 0 ? null : objects.ToArray();
 		}
 
 		///<summary>
